@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
+	    >
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
+    >
+<TextView
+   android:id="@+id/text_id"
+   android:layout_width="fill_parent"
+   android:layout_height="wrap_content"
+   android:text="Hello World, ProjectOneActivity!" />
+<Button
+   android:layout_height="wrap_content"
+   android:layout_width="wrap_content"
+   android:text="@string/generate_keys"
+   android:onClick="generateKeys" />
+<Button
+    android:layout_height="wrap_content"
+    android:layout_width="wrap_content"
+    android:text="Reset Database"
+    android:onClick="resetDb" />
+<Button
+    android:id="@+id/main_sharebutton"
+    android:layout_height="wrap_content"
+    android:layout_width="wrap_content"
+    android:text="Share Content"
+    android:onClick="shareContent"/>
+<Button
+    android:id="@+id/main_readbutton"
+   	android:layout_height="wrap_content"
+   	android:layout_width="wrap_content"
+   	android:text="Read Content"
+   	android:onClick="readContent" />
+<Button
+    android:id="@+id/main_launchbluetooth"
+    android:layout_height="wrap_content"
+    android:layout_width="wrap_content"
+    android:text="Launch Bluetooth"
+    android:onClick="launchBluetooth" />
+<Button
+    android:id="@+id/main_closebluetooth"
+    android:layout_height="wrap_content"
+    android:layout_width="wrap_content"
+    android:text="Close Bluetooth"
+    android:onClick="closeBluetooth" />
+<Button
+    android:id="@+id/main_trybluetooth"
+    android:layout_height="wrap_content"
+    android:layout_width="wrap_content"
+    android:text="Try Bluetooth"
+    android:onClick="tryBluetoothTransfer" />
+</LinearLayout>
+</ScrollView>
