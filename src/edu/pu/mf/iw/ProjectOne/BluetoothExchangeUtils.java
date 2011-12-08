@@ -79,8 +79,8 @@ public class BluetoothExchangeUtils {
     		return;
     	}
     	String[] columns = message.split("\n\r\n\r");
-    	Log.i("BluetoothExchangeUtils 86", "columns.length() = " + columns.length);
-    	Log.i("BluetoothExchangeUtils 87", "last line: " + columns[columns.length - 1]);
+    	Log.i("BluetoothExchangeUtils 82", "columns.length() = " + columns.length);
+    	Log.i("BluetoothExchangeUtils 83", "last line: " + columns[columns.length - 1]);
     	String[] columnOrder = null;
     	for (int i = 0; i < columns.length; i++) {
     		if (columns[i].contains(":::"))
@@ -194,6 +194,7 @@ public class BluetoothExchangeUtils {
 			// we don't trust this macAddr, so we use my own attestation (i.e. I prove that I am who I am)
 			String dist = "0";
 			TrustNode me = new TrustNode(CryptoMain.getUuid(ctx), false, db);
+			me.setPubkey(CryptoMain.getUuid(ctx));
 			me.setAttest(CryptoMain.generateSignature(ctx, CryptoMain.getPublicKeyString(ctx)));
 			String attest = CryptoMain.generateAttestation(me, ctx);
 			String myPK = CryptoMain.getPublicKeyString(ctx);

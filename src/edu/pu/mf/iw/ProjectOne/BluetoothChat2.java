@@ -117,13 +117,13 @@ public class BluetoothChat2 extends Service {
             			}
             		}
             		else { // sender is trusted
-            			if (contents.startsWith("Attestation from")) {
+            			if (contents.toLowerCase().contains("attestation from")) {
             				bcs.write("Attestation acknowledged", macAddr);
             			}
-            			else if (contents.startsWith("I don't trust you!")) {
+            			else if (contents.toLowerCase().contains("i don't trust you!")) {
             				sendAttestation(macAddr);
             			}
-            			else if (contents.startsWith("Attestation acknowledged")) {
+            			else if (contents.toLowerCase().contains("attestation acknowledged")) {
             				sendMessages(macAddr);
             			}
             			else {
@@ -140,7 +140,7 @@ public class BluetoothChat2 extends Service {
             		return;
             	case BluetoothChatService2.CONNECTED_SUCCESS:
             		macAddr = msg.getData().getString(BluetoothChatService2.MAC_ADDR);
-            		Log.i("BluetoothChat2 131", "got connected message with " + macAddr);
+            		Log.i("BluetoothChat2 143", "got connected message with " + macAddr);
             		sendAttestation(macAddr);
             		notifyUser(msg.what, macAddr);
             }

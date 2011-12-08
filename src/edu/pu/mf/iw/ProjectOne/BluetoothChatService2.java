@@ -95,7 +95,7 @@ public class BluetoothChatService2 {
 	// if there was some error (e.g. device is not connected yet).
 	public synchronized boolean write(String toWrite, String macAddr) {
 		if (uuidToMac.containsKey(macAddr)) macAddr = uuidToMac.get(macAddr);
-		toWrite = CryptoMain.getUuid(ctx) + "\n" + toWrite + EOM;
+		toWrite = CryptoMain.getUuid(ctx) + "\n" + toWrite;
 		if (toWrite.length() == 1024) {
 			toWrite += "\n\r\n\rpadding";
 		}

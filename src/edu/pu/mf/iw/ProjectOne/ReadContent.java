@@ -164,7 +164,11 @@ public class ReadContent extends Activity {
 				Log.i("mytag", pubKeyString);
 				boolean verify = CryptoMain.verifySignature(pubKeyString, content, signatureString);
 				if (verify) {
-					String name = c.getString(c.getColumnIndex("readable_id"));
+					String name = "";
+					name = c.getString(c.getColumnIndex("readable_id"));
+					if (name == null) {
+						name = c.getString(c.getColumnIndex(TrustDbAdapter.KEY_UUID));
+					}
 					to_display += "\n" + name + " created this content: ";
 					Log.i("mytag", String.valueOf(c.getColumnIndex("readable_id")));
 					Log.i("mytag", name);
