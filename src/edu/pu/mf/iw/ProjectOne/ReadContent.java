@@ -15,9 +15,11 @@ public class ReadContent extends Activity {
 	private static final int KEY_CODE = 0;
 	private static final int CONTENT_CODE = 1;
 	private static final int ATTEST_CODE = 2;
+	private final boolean LOG = false;
 	private String contents = null;
 	
 	private TrustDbAdapter db;
+	private MyLog myLog;
 
 	/*public ReadContent(Activity ctx) {
 		db = new TrustDbAdapter(ctx);
@@ -30,6 +32,7 @@ public class ReadContent extends Activity {
 	    setContentView(R.layout.readcontent);
 	    db = new TrustDbAdapter(this);
 	    db.open();
+	    myLog = new MyLog(CryptoMain.getUuid(this));
 	  }
 	
 	public void scanKey(View view) {
@@ -92,7 +95,12 @@ public class ReadContent extends Activity {
 		if (parts.length != 2) return;
 		String key = parts[0];
 		String id = parts[1].trim();
-		db.createTrustEntry(key, 0, id, name, id, null);
+		TrustNode newNode = new TrustNode(id, false, db);
+		newNode.setPubkey(key.trim());
+		newNode.setDistance(0);
+		newNode.setSource(id);
+		newNode.commitTrustNode();
+		if (LOG) myLog.addEntry(newNode);
 	}
 	
 	public void handleAttestation(String contents) {
@@ -105,6 +113,7 @@ public class ReadContent extends Activity {
 			if (sender.verifyContent(pubKey, attest)) {
 				sender.setAttest(attest);
 				sender.commitTrustNode();
+				if (LOG) myLog.addEntry(sender);
 			}
 		}
 	}

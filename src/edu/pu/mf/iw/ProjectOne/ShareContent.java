@@ -39,7 +39,7 @@ public class ShareContent extends Activity {
 		Intent intent = new Intent("com.google.zxing.client.android.ENCODE");
 	    try {
 	    	String to_display = CryptoMain.getPublicKeyString(this);
-	    	to_display += "\n\r\n\r" + CryptoMain.getAttestation(this);
+	    	to_display += "\n\r\n\r" + CryptoMain.generateSignature(this, CryptoMain.getPublicKeyString(this));
 	    	intent.putExtra("ENCODE_DATA", to_display);
 	    	intent.putExtra("ENCODE_TYPE", "TEXT_TYPE");
 	    	TextView tv = (TextView) findViewById(R.id.sharecontent_text);

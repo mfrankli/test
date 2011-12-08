@@ -13,7 +13,6 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.IntentFilter;
 import java.util.LinkedList;
-import java.util.TreeMap;
 
 public class BluetoothChat2 extends Service {
 	
@@ -92,43 +91,45 @@ public class BluetoothChat2 extends Service {
             		macAddr = msg.getData().getString(BluetoothChatService2.MAC_ADDR);
             		notifyUser(msg.what, macAddr);
             		String contents = new String((byte[]) msg.obj);
+                	beu.updatedCloseConditions(macAddr, contents);
             		Log.i("BluetoothChat2 94", "macAddr: " + macAddr);
             		TrustNode sender = beu.getTrustNode(macAddr);
             		Log.d("BluetoothChat2 96", contents);
-            		if (sender == null) {
-            			Log.i("BluetoothChat2 99", "sender is null");
-            		}
-            		else if (contents.contains("Attestation from")) {
-            			Log.i("BluetoothChat2 102", "Check attestation from " + macAddr);
-            			sender = beu.readAttestation(macAddr, contents);
-            			if (sender != null) {
-            				sender.commitTrustNode();
-            				bcs.write("Attestation acknowledged by " + CryptoMain.getUuid(BluetoothChat2.this), macAddr);
-            				//sendAttestation(macAddr, true);
-            			}
-            			else {
-            				Log.i("BluetoothChat2 108", "sending I don\'t trust you!");
-            				bcs.write("I don't trust you!", macAddr);
-            				if (!alreadyTried.containsKey(macAddr)) {
-            					alreadyTried.put(macAddr, true);
+            		if (sender == null) { // sender is not trusted
+            			Log.i("BluetoothChat2 99", "sender is null: " + macAddr);
+            			if (contents.startsWith("Attestation from")) {
+            				sender = beu.readAttestation(macAddr, contents);
+            				if (sender == null) {
+            					bcs.write("I don't trust you!", macAddr);
             				}
             				else {
-            					bcs.close(macAddr);
+            					sender.commitTrustNode();
+            					if (LOG) myLog.addEntry(sender);
+            					bcs.write("Attestation acknowledged", macAddr);
             				}
             			}
+            			else if (contents.startsWith("I don't trust you!")) {
+            				sendAttestation(macAddr);
+            				bcs.write("I don't trust you!", macAddr);
+            			}
+            			else {
+            				bcs.write("I don't trust you!", macAddr);
+            			}
             		}
-            		else if (contents.contains("I don't trust you!")) {
-            			sendAttestation(macAddr);
+            		else { // sender is trusted
+            			if (contents.startsWith("Attestation from")) {
+            				bcs.write("Attestation acknowledged", macAddr);
+            			}
+            			else if (contents.startsWith("I don't trust you!")) {
+            				sendAttestation(macAddr);
+            			}
+            			else if (contents.startsWith("Attestation acknowledged")) {
+            				sendMessages(macAddr);
+            			}
+            			else {
+            				beu.handleMessage(contents, sender);
+            			}
             		}
-            		else if (contents.contains("Attestation acknowledged by " + macAddr)) {
-            			Log.i("BluetoothChat2 112", "Attestation acknowledged by " + macAddr);
-            			sendMessages(macAddr);
-            		}
-            		else {
-            			Log.i("BluetoothChat2 118", "regular message");
-            			beu.handleMessage(contents, sender);
-            		}
-            		return;
             	case BluetoothChatService2.CONNECT_ERROR:
             		macAddr = msg.getData().getString(BluetoothChatService2.MAC_ADDR);
             		notifyUser(msg.what, macAddr);
@@ -143,10 +144,14 @@ public class BluetoothChat2 extends Service {
             		sendAttestation(macAddr);
             		notifyUser(msg.what, macAddr);
             }
+            if (beu.shouldBeClosed(macAddr)) {
+            	bcs.close(macAddr);
+            }
         }
     };
 	
 	private final int DEFAULT_INTERVAL = 45*60*1000; // 45 minutes
+	private final boolean LOG = false;
 	
 	private TrustDbAdapter db;
 	private BluetoothChatService2 bcs;
@@ -155,9 +160,9 @@ public class BluetoothChat2 extends Service {
 	private BluetoothExchangeUtils beu;
 	private NegativeBluetoothCache nbc = null;
 	private NegCacheDbAdapter nbcDb = null;
+	private MyLog myLog;
 	
 	private LinkedList<BluetoothDevice> discoveredDevices = new LinkedList<BluetoothDevice>();
-	private TreeMap<String, Boolean> alreadyTried = new TreeMap<String, Boolean>();
 	
 	@Override
 	public void onCreate() {
@@ -171,7 +176,8 @@ public class BluetoothChat2 extends Service {
 			stopSelf();
 			return;
 		}
-		beu = new BluetoothExchangeUtils(db, this);
+		myLog = new MyLog(CryptoMain.getUuid(this));
+		beu = new BluetoothExchangeUtils(db, this, myLog);
 		nbcDb = new NegCacheDbAdapter(this);
 		nbcDb.open();
 		nbc = new NegativeBluetoothCache(nbcDb);
@@ -205,6 +211,7 @@ public class BluetoothChat2 extends Service {
 		if (bcs != null) bcs.close();
 		if (nbcDb != null && nbcDb.isOpen()) nbcDb.close();
 		if (discoveryThread != null) discoveryThread.cancel();
+		if (myLog != null) myLog.cancelLogThread();
 		try {
         	unregisterReceiver(mReceiver);
         }

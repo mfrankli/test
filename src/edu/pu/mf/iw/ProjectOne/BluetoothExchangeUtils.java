@@ -7,13 +7,16 @@ import android.content.Context;
 public class BluetoothExchangeUtils {
 	
 	public long INTERVAL = 1*60*1000; //10 minutes soft state length
+	private final boolean LOG = false;
 	
 	private TrustDbAdapter db;
 	private Context ctx;
+	private MyLog myLog;
 	
-	public BluetoothExchangeUtils(TrustDbAdapter db, Context ctx) {
+	public BluetoothExchangeUtils(TrustDbAdapter db, Context ctx, MyLog myLog) {
 		this.db = db;
 		this.ctx = ctx;
+		this.myLog = myLog;
 	}
 	
 	public String[] generateMessageList() {
@@ -62,6 +65,14 @@ public class BluetoothExchangeUtils {
     	return toReturn;
     }
 	
+	public boolean shouldBeClosed(String macAddr) {
+		return false;
+	}
+	
+	public void updatedCloseConditions(String macAddr, String contents) {
+		
+	}
+	
 	public void handleMessage(String message, TrustNode senderNode) {
     	if (senderNode == null) {// we don't trust the sender...
     		Log.i("BluetoothExchangeUtils 48", "TrustNode of sender is null");
@@ -102,6 +113,12 @@ public class BluetoothExchangeUtils {
     	else { // we only accept messages with uuids
     		return;
     	}
+    	if (toCommit.getSource() != null) {
+    		TrustNode source = getTrustNode(toCommit.getSource());
+    		if (source.getDistance() < senderNode.getDistance()) {
+    			return;
+    		}
+    	}
     	if (pubIndex != -1) {
     		pubKey = columns[pubIndex];
     		if (toCommit != null) {
@@ -110,6 +127,7 @@ public class BluetoothExchangeUtils {
     	}
     	else {
     		pubKey = null;
+    		return; // we only accept messages with public keys
     	}
     	if (distIndex != -1) {
     		dist = Integer.parseInt(columns[distIndex]) + senderNode.getDistance();
@@ -134,9 +152,15 @@ public class BluetoothExchangeUtils {
     	}
     	String source = senderNode.getUuid();
     	if (toCommit != null) {
-    		toCommit.setSource(source);
+    		if (toCommit.getSource() != null) {
+        		TrustNode oldSource = getTrustNode(toCommit.getSource());
+        		if (oldSource.getAttest() == null || attestIndex != -1) {
+            		toCommit.setSource(source);
+        		}
+        	}
     	}
     	toCommit.commitTrustNode();
+    	if (LOG) myLog.addEntry(toCommit);
     }
 	
 	public TrustNode getTrustNode(String macAddr) {
@@ -161,37 +185,35 @@ public class BluetoothExchangeUtils {
 	/* Attestation format:
 	 * - macAddr of shared node
 	 * - distance
-	 * - SIG-RSA_sk-shared(pk-shared)
+	 * - AES_sk-shared(SIG-RSA_sk-shared(pk-shared))
 	 * - public key of claiming node
 	 */
 	public String getAttestation(String macAddr) {
 		TrustNode toConvince = getTrustNode(macAddr);
-		if (toConvince == null) { // we don't trust this macAddr
-			return null;
-		}
-		String sharedMac = null;
-		if (toConvince != null) {
-			sharedMac = toConvince.getSource();
-		}
-		if (sharedMac.equals(CryptoMain.getUuid(ctx))) {
-			// this means that I am the shared node
+		if (toConvince == null) { 
+			// we don't trust this macAddr, so we use my own attestation (i.e. I prove that I am who I am)
 			String dist = "0";
-			String attest = CryptoMain.generateSignature(ctx, CryptoMain.getPublicKeyString(ctx));
+			TrustNode me = new TrustNode(CryptoMain.getUuid(ctx), false, db);
+			me.setAttest(CryptoMain.generateSignature(ctx, CryptoMain.getPublicKeyString(ctx)));
+			String attest = CryptoMain.generateAttestation(me, ctx);
+			String myPK = CryptoMain.getPublicKeyString(ctx);
+			return "Attestation from " + CryptoMain.getUuid(ctx) + ":\n\r\n\r" + CryptoMain.getUuid(ctx).trim() + "\n\r\n\r" + dist + "\n\r\n\r" + attest.trim() + "\n\r\n\r" + myPK.trim() + "\n\r\n\r";
+		}
+		else {
+			String sharedMac = toConvince.getSource();
+			TrustNode sharedNode = getTrustNode(sharedMac);
+			if (sharedNode == null) sharedNode = getTrustNode(macAddr); // this probably shouldn't happen
+			String dist = String.valueOf(sharedNode.getDistance());
+			String attest = CryptoMain.generateAttestation(sharedNode, ctx);
 			String myPK = CryptoMain.getPublicKeyString(ctx);
 			return "Attestation from " + CryptoMain.getUuid(ctx) + ":\n\r\n\r" + sharedMac.trim() + "\n\r\n\r" + dist + "\n\r\n\r" + attest.trim() + "\n\r\n\r" + myPK.trim() + "\n\r\n\r";
 		}
-		TrustNode sharedNode = getTrustNode(sharedMac);
-		if (sharedNode == null) sharedNode = getTrustNode(macAddr);
-		String dist = String.valueOf(sharedNode.getDistance());
-		String attest = sharedNode.getAttest();
-		String myPK = CryptoMain.getPublicKeyString(ctx);
-		return "Attestation from " + CryptoMain.getUuid(ctx) + ":\n\r\n\r" + sharedMac.trim() + "\n\r\n\r" + dist + "\n\r\n\r" + attest.trim() + "\n\r\n\r" + myPK.trim() + "\n\r\n\r";
 	}
 	
 	public TrustNode readAttestation(String macAddr, String attest) {
-		Log.i("BluetoothExchangeUtils 192", "Attesation from " + macAddr + ":\n" + attest);
+		Log.i("BluetoothExchangeUtils 192", attest);
 		String[] parts = attest.split("\n\r\n\r");
-		if (parts == null) {
+		if (parts == null || parts.length < 5) {
 			Log.i("BluetoothExchangeUtils 195", "parts was null");
 			return null;
 		}
@@ -204,7 +226,8 @@ public class BluetoothExchangeUtils {
 			Log.i("BluetoothExchangeUtils 204", "shared node doesn't exist");
 			return null;
 		}
-		if (sharedNode.verifyContent(sharedNode.getPubkey(), parts[3])) {
+		String plaintextAttest = CryptoMain.decryptAttestation(sharedNode, ctx, parts[3]);
+		if (sharedNode.getPubkey().contains(plaintextAttest)) {
 			Log.i("BluetoothExchangeUtils 208", "contents were verified!");
 			sharedDist += sharedNode.getDistance();
 			TrustNode newNode = new TrustNode(macAddr, false, db);

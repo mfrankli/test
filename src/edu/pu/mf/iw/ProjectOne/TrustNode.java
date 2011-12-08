@@ -4,6 +4,7 @@ import android.database.Cursor;
 import android.util.Log;
 
 public class TrustNode {
+	
 	private TrustDbAdapter db;
 	private String pubKey; // public key
 	private int distance; // distance to node
