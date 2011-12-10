@@ -246,8 +246,8 @@ public class BluetoothChat2 extends Service {
 	private boolean sendAttestation(String macAddr) {
 		String attestation;
 		attestation = beu.getAttestation(macAddr);
-		Log.i("BluetoothChat2 220", attestation);
 		if (attestation == null) return false;
+		Log.i("BluetoothChat2 220", attestation);
 		bcs.write(attestation, macAddr);
 		return true;
 	}

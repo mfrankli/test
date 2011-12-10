@@ -164,11 +164,11 @@ public class BluetoothExchangeUtils {
     }
 	
 	public TrustNode getTrustNode(String macAddr) {
-		macAddr = macAddr.trim();
 		if (macAddr == null) return null;
+		macAddr = macAddr.trim();
 		Log.i("BluetoothExchangeUtils 158", "Getting macAddr: " + macAddr);
     	if (macAddr.equals(CryptoMain.getUuid(ctx))) {
-    		Log.i("BluetoothExchangeUtils 167", "getting myself");
+    		Log.i("BluetoothExchangeUtils 171", "getting myself");
     		TrustNode myself = new TrustNode(macAddr, false, db);
     		myself.setPubkey(CryptoMain.getPublicKeyString(ctx));
     		myself.setDistance(0);
@@ -203,11 +203,18 @@ public class BluetoothExchangeUtils {
 		else {
 			String sharedMac = toConvince.getSource();
 			TrustNode sharedNode = getTrustNode(sharedMac);
-			if (sharedNode == null) sharedNode = getTrustNode(macAddr); // this probably shouldn't happen
+			if (sharedNode == null) sharedNode = getTrustNode(macAddr); // this means they themselves were the source?
 			String dist = String.valueOf(sharedNode.getDistance());
 			String attest = CryptoMain.generateAttestation(sharedNode, ctx);
+			if (attest == null) return null;
 			String myPK = CryptoMain.getPublicKeyString(ctx);
-			return "Attestation from " + CryptoMain.getUuid(ctx) + ":\n\r\n\r" + sharedMac.trim() + "\n\r\n\r" + dist + "\n\r\n\r" + attest.trim() + "\n\r\n\r" + myPK.trim() + "\n\r\n\r";
+			String toReturn = "Attestation from " + CryptoMain.getUuid(ctx) + ":\n\r\n\r";
+			toReturn += sharedMac.trim() + "\n\r\n\r";
+			toReturn += dist + "\n\r\n\r";
+			toReturn += attest.trim() + "\n\r\n\r";
+			if (myPK != null) myPK = myPK.trim();
+			toReturn += myPK.trim() + "\n\r\n\r";
+			return toReturn;
 		}
 	}
 	

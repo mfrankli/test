@@ -179,7 +179,10 @@ public class CryptoMain
 	// is actually the seed to the secret key - thus only people with signed content (i.e. the attestation) can get the ptext
 	public static String generateAttestation(TrustNode node, Context ctx) {
 		try {
-			if (node.getAttest() == null) return null;
+			if (node.getAttest() == null) {
+				Log.i("CryptoMain 183", "attest was null for " + node.getUuid());
+				return null;
+			}
 			SecureRandom sec = new SecureRandom(node.getAttest().getBytes());
 			KeyGenerator gen = KeyGenerator.getInstance("AES");
 			gen.init(128, sec);
@@ -205,7 +208,7 @@ public class CryptoMain
 			SecretKeySpec spec = new SecretKeySpec(skey.getEncoded(), "AES");
 			Cipher ciph = Cipher.getInstance("AES");
 			ciph.init(Cipher.DECRYPT_MODE, spec);
-			return Base64.encodeToString(ciph.doFinal(contents.getBytes()), Base64.DEFAULT);
+			return Base64.encodeToString(ciph.doFinal(Base64.decode(contents.getBytes(), Base64.DEFAULT)), Base64.DEFAULT);
 		}
 		catch (Exception e) {
 			Log.e("CryptoMain 202", "decryption failed", e);

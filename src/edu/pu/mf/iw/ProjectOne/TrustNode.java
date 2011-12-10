@@ -44,9 +44,9 @@ public class TrustNode {
 				pubKey = c.getString(pubKeyIndex);
 				uuid = key;
 			}
-			distance = c.getInt(distIndex);
-			source = c.getString(sourceIndex);
-			attest = c.getString(attestIndex);
+			if (distIndex != -1) distance = c.getInt(distIndex);
+			if (sourceIndex != -1) source = c.getString(sourceIndex);
+			if (attestIndex != -1) attest = c.getString(attestIndex);
 		}
 		else {
 			if (isPubKey) {

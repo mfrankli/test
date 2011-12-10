@@ -1,23 +1,16 @@
 package edu.pu.mf.iw.ProjectOne;
 
-import org.apache.http.client.HttpClient;
-import org.apache.http.impl.client.DefaultHttpClient;
-import org.apache.http.client.methods.HttpPost;
-import java.util.List;
-import java.util.ArrayList;
 import android.util.Log;
-import org.apache.http.NameValuePair;
-import org.apache.http.message.BasicNameValuePair;
-import org.apache.http.client.entity.UrlEncodedFormEntity;
-import org.apache.http.HttpResponse;
-import org.apache.http.StatusLine;
-
+import java.net.Socket;
+import java.net.InetAddress;
+import java.io.OutputStream;
+import java.io.InputStream;
 
 public class MyLog {
 	
 	private class LogThread extends Thread {
 		
-		private final String URL = "http://www.shgfdas.com/this_is_not_a_real_url";
+		private int PORT = -1;
 		
 		private long interval = -1;
 		private boolean toRun = true;
@@ -39,17 +32,28 @@ public class MyLog {
 		}
 		
 		private void sendLog() {
-			HttpClient client = new DefaultHttpClient();
-			HttpPost post = new HttpPost(URL);
+			if (PORT == -1) return;
+			if (!MyLog.this.toLog) return;
 			try {
-				List<NameValuePair> list = new ArrayList<NameValuePair>();
-				list.add(new BasicNameValuePair("logger", "mike"));
-				list.add(new BasicNameValuePair("sender_timestamp", String.valueOf(System.currentTimeMillis())));
-				list.add(new BasicNameValuePair("contents", MyLog.this.currentLog));
-				post.setEntity(new UrlEncodedFormEntity(list));
-				HttpResponse response = client.execute(post);
-				StatusLine status = response.getStatusLine();
-				if (status.getStatusCode() == 200) {
+				InetAddress addr = InetAddress.getAllByName("128.112.7.80")[0];
+				Socket sock = new Socket(addr, 5840);
+				Log.i("MyLog 37", String.valueOf(sock.getLocalPort()));
+				OutputStream fos = sock.getOutputStream();
+				fos.write(MyLog.this.currentLog.getBytes());
+				InputStream fis = sock.getInputStream();
+				byte[] buf = new byte[1024];
+				String aggregate = "";
+				int read = 0;
+				while ((read = fis.read(buf)) == buf.length) {
+					aggregate += new String(buf);
+					buf = new byte[1024];
+				}
+				byte[] aggBuf = new byte[read];
+				for (int i = 0; i < read; i++) {
+					aggBuf[i] = buf[i];
+				}
+				aggregate += new String(aggBuf);
+				if (aggregate.toLowerCase().contains("append successful")) {
 					MyLog.this.currentLog = "";
 				}
 			}
@@ -69,6 +73,7 @@ public class MyLog {
 	private String loggerUUID;
 	private final long INTERVAL = 10*60*1000; // 10 minutes in millis
 	private LogThread logThread;
+	private boolean toLog = false;
 	
 	public MyLog(String loggerUUID) {
 		this.loggerUUID = new String(loggerUUID.getBytes());
