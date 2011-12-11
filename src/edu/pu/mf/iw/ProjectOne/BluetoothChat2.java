@@ -94,15 +94,17 @@ public class BluetoothChat2 extends Service {
                 	beu.updatedCloseConditions(macAddr, contents);
             		Log.i("BluetoothChat2 94", "macAddr: " + macAddr);
             		TrustNode sender = beu.getTrustNode(macAddr);
-            		Log.d("BluetoothChat2 96", contents);
+            		Log.i("BluetoothChat2 96", contents);
             		if (sender == null) { // sender is not trusted
             			Log.i("BluetoothChat2 99", "sender is null: " + macAddr);
-            			if (contents.startsWith("Attestation from")) {
+            			if (contents.toLowerCase().contains("attestation from")) {
             				sender = beu.readAttestation(macAddr, contents);
             				if (sender == null) {
+            					Log.i("BluetoothChat2 103", "I don't trust you: " + macAddr);
             					bcs.write("I don't trust you!", macAddr);
             				}
             				else {
+            					Log.i("BluetoothChat2 107", "I trust you! " + macAddr);
             					sender.commitTrustNode();
             					if (LOG) myLog.addEntry(sender);
             					bcs.write("Attestation acknowledged", macAddr);
@@ -118,6 +120,7 @@ public class BluetoothChat2 extends Service {
             		}
             		else { // sender is trusted
             			if (contents.toLowerCase().contains("attestation from")) {
+            				Log.i("BluetoothChat2 123", "attestation acknowledged from " + macAddr);
             				bcs.write("Attestation acknowledged", macAddr);
             			}
             			else if (contents.toLowerCase().contains("i don't trust you!")) {
@@ -270,6 +273,6 @@ public class BluetoothChat2 extends Service {
 		Context ctx = getApplicationContext();
 		Toast toast = Toast.makeText(ctx, event + macAddr, Toast.LENGTH_SHORT);
     	toast.show();
-    	Log.i("BluetoothChat2 245", event + macAddr);
+    	Log.i("BluetoothChat2 273", event + macAddr);
 	}
 }

@@ -167,11 +167,12 @@ public class BluetoothExchangeUtils {
 		if (macAddr == null) return null;
 		macAddr = macAddr.trim();
 		Log.i("BluetoothExchangeUtils 158", "Getting macAddr: " + macAddr);
-    	if (macAddr.equals(CryptoMain.getUuid(ctx))) {
+    	if (macAddr.trim().contains(CryptoMain.getUuid(ctx).trim())) {
     		Log.i("BluetoothExchangeUtils 171", "getting myself");
     		TrustNode myself = new TrustNode(macAddr, false, db);
     		myself.setPubkey(CryptoMain.getPublicKeyString(ctx));
     		myself.setDistance(0);
+    		myself.setAttest(CryptoMain.generateSignature(ctx, CryptoMain.getPublicKeyString(ctx)));
     		return myself;
     	}
     	TrustNode newEntry = new TrustNode(macAddr, false, db);
@@ -185,25 +186,29 @@ public class BluetoothExchangeUtils {
 	/* Attestation format:
 	 * - macAddr of shared node
 	 * - distance
-	 * - AES_sk-shared(SIG-RSA_sk-shared(pk-shared))
+	 * - SIG-RSA(PK_shared)
 	 * - public key of claiming node
 	 */
 	public String getAttestation(String macAddr) {
 		TrustNode toConvince = getTrustNode(macAddr);
 		if (toConvince == null) { 
 			// we don't trust this macAddr, so we use my own attestation (i.e. I prove that I am who I am)
+			// because we don't know who we are supposed to be convincing. We don't give away our attestation
 			String dist = "0";
 			TrustNode me = new TrustNode(CryptoMain.getUuid(ctx), false, db);
 			me.setPubkey(CryptoMain.getUuid(ctx));
 			me.setAttest(CryptoMain.generateSignature(ctx, CryptoMain.getPublicKeyString(ctx)));
-			String attest = CryptoMain.generateAttestation(me, ctx);
+			String attest = " ";
 			String myPK = CryptoMain.getPublicKeyString(ctx);
-			return "Attestation from " + CryptoMain.getUuid(ctx) + ":\n\r\n\r" + CryptoMain.getUuid(ctx).trim() + "\n\r\n\r" + dist + "\n\r\n\r" + attest.trim() + "\n\r\n\r" + myPK.trim() + "\n\r\n\r";
+			return "Attestation from " + CryptoMain.getUuid(ctx) + ":\n\r\n\r" + CryptoMain.getUuid(ctx).trim() + "\n\r\n\r" + dist + "\n\r\n\r" + attest + "\n\r\n\r" + myPK.trim() + "\n\r\n\r";
 		}
 		else {
 			String sharedMac = toConvince.getSource();
 			TrustNode sharedNode = getTrustNode(sharedMac);
-			if (sharedNode == null) sharedNode = getTrustNode(macAddr); // this means they themselves were the source?
+			if (sharedNode == null) {
+				sharedNode = getTrustNode(macAddr); // this means they themselves were the source?
+				sharedMac = sharedNode.getUuid();
+			}
 			String dist = String.valueOf(sharedNode.getDistance());
 			String attest = CryptoMain.generateAttestation(sharedNode, ctx);
 			if (attest == null) return null;
@@ -226,16 +231,19 @@ public class BluetoothExchangeUtils {
 			return null;
 		}
 		String sharedMacAddr = parts[1];
-		Log.i("BluetoothExchangeUtils 199", "sharedMacAddr: " + sharedMacAddr);
+		if (parts[3].length() == 1) {
+			// there is no attestation, because they don't trust us
+			return getTrustNode(sharedMacAddr);
+		}
+		Log.i("BluetoothExchangeUtils 232", "sharedMacAddr: " + sharedMacAddr);
 		int sharedDist = Integer.parseInt(parts[2]);
-		Log.i("BluetoothExchangeUtils 101", "sharedDist: " + sharedDist);
+		Log.i("BluetoothExchangeUtils 234", "sharedDist: " + sharedDist);
 		TrustNode sharedNode = getTrustNode(sharedMacAddr);
 		if (sharedNode == null || sharedNode.getDistance() == Integer.MAX_VALUE) {
 			Log.i("BluetoothExchangeUtils 204", "shared node doesn't exist");
 			return null;
 		}
-		String plaintextAttest = CryptoMain.decryptAttestation(sharedNode, ctx, parts[3]);
-		if (sharedNode.getPubkey().contains(plaintextAttest)) {
+		if (CryptoMain.decryptAttestation(sharedNode, parts[3])) {
 			Log.i("BluetoothExchangeUtils 208", "contents were verified!");
 			sharedDist += sharedNode.getDistance();
 			TrustNode newNode = new TrustNode(macAddr, false, db);

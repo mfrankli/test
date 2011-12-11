@@ -105,16 +105,21 @@ public class ReadContent extends Activity {
 	
 	public void handleAttestation(String contents) {
 		String[] parts = contents.split("\n\r\n\r");
-		if (parts == null || parts.length == 0) return;
+		if (parts == null || parts.length == 0) {
+			Log.i("ReadContent 109", "parts was null or 0 length");
+			return;
+		}
 		String pubKey = parts[0];
+		pubKey = pubKey.trim();
 		String attest = parts[1];
+		attest = attest.trim();
 		TrustNode sender = new TrustNode(pubKey, true, db);
 		if (sender != null && sender.getDistance() != Integer.MAX_VALUE) {
-			if (sender.verifyContent(pubKey, attest)) {
-				sender.setAttest(attest);
-				sender.commitTrustNode();
-				if (LOG) myLog.addEntry(sender);
-			}
+			Log.i("ReadContent 118", "sender was valid");
+			sender.setAttest(attest);
+			Log.i("ReadContent 120", new String(sender.getAttest().getBytes()));
+			sender.commitTrustNode();
+			if (LOG) myLog.addEntry(sender);
 		}
 	}
 	

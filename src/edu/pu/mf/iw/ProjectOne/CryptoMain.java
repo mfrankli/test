@@ -9,10 +9,6 @@ import java.io.FileOutputStream;
 import java.io.FileInputStream;
 import android.content.Context;
 import javax.crypto.Cipher;
-import javax.crypto.SecretKey;
-import javax.crypto.KeyGenerator;
-import javax.crypto.spec.SecretKeySpec;
-
 
 public class CryptoMain
 {
@@ -173,46 +169,28 @@ public class CryptoMain
 		return getUuid(ctx);
 	}
 	
-	// This makes a secret key seeded from TrustNode's attestation, then uses the secret key to encrypt the node's pubkey
-	// Arguments are: node for which an attestation is being created, and context
-	// Note: the signed content can be any arbitrary hard-coded content (in this case, it's the public key). The "attestion"
-	// is actually the seed to the secret key - thus only people with signed content (i.e. the attestation) can get the ptext
 	public static String generateAttestation(TrustNode node, Context ctx) {
 		try {
 			if (node.getAttest() == null) {
 				Log.i("CryptoMain 183", "attest was null for " + node.getUuid());
 				return null;
 			}
-			SecureRandom sec = new SecureRandom(node.getAttest().getBytes());
-			KeyGenerator gen = KeyGenerator.getInstance("AES");
-			gen.init(128, sec);
-			SecretKey skey = gen.generateKey();
-			SecretKeySpec spec = new SecretKeySpec(skey.getEncoded(), "AES");
-			Cipher ciph = Cipher.getInstance("AES");
-			ciph.init(Cipher.ENCRYPT_MODE, spec);
-			return Base64.encodeToString(ciph.doFinal(node.getPubkey().getBytes()), Base64.DEFAULT);
+			return node.getAttest();
 		}
 		catch (Exception e) {
-			Log.e("CryptoMain 183", "generateAttestation error", e);
+			Log.e("CryptoMain 196", "generateAttestation error", e);
 			return null;
 		}
 	}
 	
-	public static String decryptAttestation(TrustNode node, Context ctx, String contents) {
+	public static boolean decryptAttestation(TrustNode node, String claim) {
 		try {
-			if (node.getAttest() == null) return null;
-			SecureRandom sec = new SecureRandom(node.getAttest().getBytes());
-			KeyGenerator gen = KeyGenerator.getInstance("AES");
-			gen.init(128, sec);
-			SecretKey skey = gen.generateKey();
-			SecretKeySpec spec = new SecretKeySpec(skey.getEncoded(), "AES");
-			Cipher ciph = Cipher.getInstance("AES");
-			ciph.init(Cipher.DECRYPT_MODE, spec);
-			return Base64.encodeToString(ciph.doFinal(Base64.decode(contents.getBytes(), Base64.DEFAULT)), Base64.DEFAULT);
+			if (node.getAttest() == null) return false;
+			return verifySignature(node.getPubkey(), node.getPubkey(), claim);
 		}
 		catch (Exception e) {
 			Log.e("CryptoMain 202", "decryption failed", e);
-			return null;
+			return false;
 		}
 	}
 }

@@ -82,14 +82,14 @@ public class NegativeBluetoothCache {
 		NBCNode node = new NBCNode(macAddr);
 		//Log.i("NegativeBluetoothCache 82", node.toString());
 		if (node.lastFailTime + SS_LENGTH > System.currentTimeMillis()) {
-			if (node.numFailsSince > 10) {
+			if (node.numFailsSince > 20) {
 				return true;
 			}
 			return false;
 		}
 		else {
 			Log.i("NegativeBluetoothCache 89", "numFailsSince: " + node.lastFailTime + "\ncurrent time: " + System.currentTimeMillis());
-			node.numFailsSince = node.numFailsSince/2;
+			node.numFailsSince = 0;
 			node.commit();
 			return false;
 		}

@@ -140,7 +140,9 @@ public class BluetoothChatService2 {
 			LinkedList<byte []> chunks = uuidToBufferedRead.get(macAddr);
 			byte[] toReturn = new byte[length];
 			for (int i = 0; i < length; i++) {
-				toReturn[i] = buf[i];
+				if (i < toReturn.length && i < buf.length) {
+					toReturn[i] = buf[i];
+				}
 			}
 			if (chunks == null) {
 				buf = toReturn;
