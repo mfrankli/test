@@ -10,7 +10,7 @@ public class MyLog {
 	
 	private class LogThread extends Thread {
 		
-		private int PORT = -1;
+		private int PORT = 5840;
 		
 		private long interval = -1;
 		private boolean toRun = true;
@@ -36,7 +36,7 @@ public class MyLog {
 			if (!MyLog.this.toLog) return;
 			try {
 				InetAddress addr = InetAddress.getAllByName("128.112.7.80")[0];
-				Socket sock = new Socket(addr, 5840);
+				Socket sock = new Socket(addr, PORT);
 				Log.i("MyLog 37", String.valueOf(sock.getLocalPort()));
 				OutputStream fos = sock.getOutputStream();
 				fos.write(MyLog.this.currentLog.getBytes());

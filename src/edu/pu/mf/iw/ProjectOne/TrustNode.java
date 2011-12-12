@@ -2,8 +2,9 @@ package edu.pu.mf.iw.ProjectOne;
 
 import android.database.Cursor;
 import android.util.Log;
+import java.util.ArrayList;
 
-public class TrustNode {
+public class TrustNode implements Comparable<TrustNode> {
 	
 	private TrustDbAdapter db;
 	private String pubKey; // public key
@@ -121,12 +122,43 @@ public class TrustNode {
 	}
 	
 	public boolean commitTrustNode() {
+		boolean toReturn = false;
 		if (pubKey != null && uuid != null) {
 			if (!db.updateTrustEntry(pubKey, distance, uuid, name, source, attest))
-				return (db.createTrustEntry(pubKey, distance, uuid, name, source, attest) != -1);
-			return true;
+				toReturn = (db.createTrustEntry(pubKey, distance, uuid, name, source, attest) != -1);
+			else toReturn = true;
 		}
-		return false;
+		return toReturn;
+	}
+	
+	public static TrustNode[] getAllTrustNodes(TrustDbAdapter db) {
+		Cursor c = db.selectAllEntries();
+		ArrayList<TrustNode> toReturnList = new ArrayList<TrustNode>();
+		if (c == null) return null;
+		for (int i = 0; i < c.getCount(); i++) {
+			c.move(i);
+			int uuidIndex = c.getColumnIndex(TrustDbAdapter.KEY_UUID);
+			int distIndex = c.getColumnIndex(TrustDbAdapter.KEY_DIST);
+			int pubKeyIndex = c.getColumnIndex(TrustDbAdapter.KEY_PUBKEY);
+			int sourceIndex = c.getColumnIndex(TrustDbAdapter.KEY_SOURCE);
+			int attestIndex = c.getColumnIndex(TrustDbAdapter.KEY_ATTEST);
+			if (uuidIndex != -1 && pubKeyIndex != -1 && distIndex != -1) {
+				TrustNode newNode = new TrustNode(db);
+				newNode.setUuid(c.getString(uuidIndex));
+				newNode.setPubkey(c.getString(pubKeyIndex));
+				if (attestIndex != -1) newNode.setAttest(c.getString(attestIndex));
+				if (sourceIndex != -1) newNode.setSource(c.getString(sourceIndex));
+				if (distIndex != -1) newNode.setDistance(c.getInt(distIndex));
+				toReturnList.add(newNode);
+			}
+		}
+		return (TrustNode []) toReturnList.toArray();
+	}
+	
+	public int compareTo(TrustNode that) {
+		if (this.distance < that.distance) return -1;
+		if (this.distance == that.distance) return 0;
+		return 1;
 	}
 	
 }

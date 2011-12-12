@@ -3,6 +3,12 @@ package edu.pu.mf.iw.ProjectOne;
 import android.database.Cursor;
 import android.util.Log;
 import android.content.Context;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.TreeMap;
+import java.util.Arrays;
 
 public class BluetoothExchangeUtils {
 	
@@ -166,9 +172,9 @@ public class BluetoothExchangeUtils {
 	public TrustNode getTrustNode(String macAddr) {
 		if (macAddr == null) return null;
 		macAddr = macAddr.trim();
-		Log.i("BluetoothExchangeUtils 158", "Getting macAddr: " + macAddr);
+		Log.i("BluetoothExchangeUtils 170", "Getting macAddr: " + macAddr);
     	if (macAddr.trim().contains(CryptoMain.getUuid(ctx).trim())) {
-    		Log.i("BluetoothExchangeUtils 171", "getting myself");
+    		Log.i("BluetoothExchangeUtils 172", "getting myself");
     		TrustNode myself = new TrustNode(macAddr, false, db);
     		myself.setPubkey(CryptoMain.getPublicKeyString(ctx));
     		myself.setDistance(0);
@@ -177,85 +183,65 @@ public class BluetoothExchangeUtils {
     	}
     	TrustNode newEntry = new TrustNode(macAddr, false, db);
     	if (newEntry.getDistance() == Integer.MAX_VALUE) {
-    		Log.i("BluetoothExchangeUtils 175", "new entry has MAX_VALUE distance");
+    		Log.i("BluetoothExchangeUtils 181", "new entry has MAX_VALUE distance");
     		return null;
     	}
     	return newEntry;
     }
 	
-	/* Attestation format:
-	 * - macAddr of shared node
-	 * - distance
-	 * - SIG-RSA(PK_shared)
-	 * - public key of claiming node
-	 */
-	public String getAttestation(String macAddr) {
-		TrustNode toConvince = getTrustNode(macAddr);
-		if (toConvince == null) { 
-			// we don't trust this macAddr, so we use my own attestation (i.e. I prove that I am who I am)
-			// because we don't know who we are supposed to be convincing. We don't give away our attestation
-			String dist = "0";
-			TrustNode me = new TrustNode(CryptoMain.getUuid(ctx), false, db);
-			me.setPubkey(CryptoMain.getUuid(ctx));
-			me.setAttest(CryptoMain.generateSignature(ctx, CryptoMain.getPublicKeyString(ctx)));
-			String attest = " ";
-			String myPK = CryptoMain.getPublicKeyString(ctx);
-			return "Attestation from " + CryptoMain.getUuid(ctx) + ":\n\r\n\r" + CryptoMain.getUuid(ctx).trim() + "\n\r\n\r" + dist + "\n\r\n\r" + attest + "\n\r\n\r" + myPK.trim() + "\n\r\n\r";
+	// We might want a better implementation later
+	public String[] getTabbedAttestations(String reqId) {
+		TrustNode[] nodes = TrustNode.getAllTrustNodes(db);
+		ArrayList<String> tabbedAttestsList = new ArrayList<String>();
+		for (int i = 0; i < nodes.length; i++) {
+			TabbedAttestation ta = CryptoMain.generateTabbedAttestation(ctx, nodes[i], reqId, false);
+			String toAdd = ta.c + "::::::::::" + ta.t;
+			tabbedAttestsList.add(toAdd);
 		}
-		else {
-			String sharedMac = toConvince.getSource();
-			TrustNode sharedNode = getTrustNode(sharedMac);
-			if (sharedNode == null) {
-				sharedNode = getTrustNode(macAddr); // this means they themselves were the source?
-				sharedMac = sharedNode.getUuid();
-			}
-			String dist = String.valueOf(sharedNode.getDistance());
-			String attest = CryptoMain.generateAttestation(sharedNode, ctx);
-			if (attest == null) return null;
-			String myPK = CryptoMain.getPublicKeyString(ctx);
-			String toReturn = "Attestation from " + CryptoMain.getUuid(ctx) + ":\n\r\n\r";
-			toReturn += sharedMac.trim() + "\n\r\n\r";
-			toReturn += dist + "\n\r\n\r";
-			toReturn += attest.trim() + "\n\r\n\r";
-			if (myPK != null) myPK = myPK.trim();
-			toReturn += myPK.trim() + "\n\r\n\r";
-			return toReturn;
-		}
+		 Collections.shuffle(tabbedAttestsList);
+		 return (String []) tabbedAttestsList.toArray();
 	}
 	
-	public TrustNode readAttestation(String macAddr, String attest) {
-		Log.i("BluetoothExchangeUtils 192", attest);
-		String[] parts = attest.split("\n\r\n\r");
-		if (parts == null || parts.length < 5) {
-			Log.i("BluetoothExchangeUtils 195", "parts was null");
-			return null;
-		}
-		String sharedMacAddr = parts[1];
-		if (parts[3].length() == 1) {
-			// there is no attestation, because they don't trust us
-			return getTrustNode(sharedMacAddr);
-		}
-		Log.i("BluetoothExchangeUtils 232", "sharedMacAddr: " + sharedMacAddr);
-		int sharedDist = Integer.parseInt(parts[2]);
-		Log.i("BluetoothExchangeUtils 234", "sharedDist: " + sharedDist);
-		TrustNode sharedNode = getTrustNode(sharedMacAddr);
-		if (sharedNode == null || sharedNode.getDistance() == Integer.MAX_VALUE) {
-			Log.i("BluetoothExchangeUtils 204", "shared node doesn't exist");
-			return null;
-		}
-		if (CryptoMain.decryptAttestation(sharedNode, parts[3])) {
-			Log.i("BluetoothExchangeUtils 208", "contents were verified!");
-			sharedDist += sharedNode.getDistance();
-			TrustNode newNode = new TrustNode(macAddr, false, db);
-			if (newNode.getDistance() == Integer.MAX_VALUE) {
-				newNode.setPubkey(parts[4]);
-				newNode.setDistance(sharedDist);
+	// This searches through an array of tabbed attestations, and returns the 
+	// node that forms the path, if such a node exists
+	public TrustNode checkTabbedAttestations(String[] tabbedAttestations, String reqId) {
+		// parse tabbedAttestations
+		TreeMap<String, TabbedAttestation> theirTabbedAttestations = new TreeMap<String, TabbedAttestation>();
+		Set<String> theirTabs = new TreeSet<String>();
+		for (int i = 0; i < tabbedAttestations.length; i++) {
+			String[] parts = tabbedAttestations[i].split("::::::::::");
+			if (parts != null && parts.length == 2) {
+				theirTabbedAttestations.put(parts[1], new TabbedAttestation(parts[0], parts[1], reqId));
+				theirTabs.add(parts[1]);
 			}
-			Log.i("BluetoothExchangeUtils 215", "Attestation was valid from " + macAddr);
-			return newNode;
 		}
-		Log.i("BluetoothExchangeUtils 218", "Invalid attestation");
+		TrustNode[] nodes = TrustNode.getAllTrustNodes(db);
+		TreeMap<String, TabbedAttestation> myTabbedAttestations = new TreeMap<String, TabbedAttestation>();
+		Set<String> myTabs = new TreeSet<String>();
+		for (int i = 0; i < nodes.length; i++) {
+			TabbedAttestation newTA = CryptoMain.generateTabbedAttestation(ctx, nodes[i], reqId, true);
+			if (newTA != null) {
+				myTabbedAttestations.put(newTA.t, newTA);
+				myTabs.add(newTA.t);
+			}
+		}
+		Set<String> sharedTabs = new TreeSet<String>(myTabs);
+		sharedTabs.retainAll(theirTabs);
+		ArrayList<TrustNode> toReturnList = new ArrayList<TrustNode>();
+		// check each of the shared tabs. we return the node with the minimum distance
+		for (String sharedTab : sharedTabs) {
+			TabbedAttestation mySharedTabbedAttestation = myTabbedAttestations.get(sharedTab);
+			TabbedAttestation theirSharedTabbedAttestation = theirTabbedAttestations.get(sharedTab);
+			TrustNode temp = null;
+			if ((temp = mySharedTabbedAttestation.checkMatch(ctx, theirSharedTabbedAttestation)) != null) {
+				toReturnList.add(temp);
+			}
+		}
+		if (toReturnList.size() > 0) {
+			TrustNode[] sharedNodes = (TrustNode []) toReturnList.toArray();
+			Arrays.sort(sharedNodes);
+			return sharedNodes[0];
+		}
 		return null;
 	}
-
 }

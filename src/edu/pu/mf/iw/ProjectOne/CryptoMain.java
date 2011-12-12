@@ -9,6 +9,8 @@ import java.io.FileOutputStream;
 import java.io.FileInputStream;
 import android.content.Context;
 import javax.crypto.Cipher;
+import 	javax.crypto.spec.SecretKeySpec;
+import 	javax.crypto.Mac;
 
 public class CryptoMain
 {
@@ -169,28 +171,105 @@ public class CryptoMain
 		return getUuid(ctx);
 	}
 	
-	public static String generateAttestation(TrustNode node, Context ctx) {
+	// Generates an attestation \sigma_node,me i.e. an attestation from me to node
+	// To do this, I sign the node's uuid (i.e. SHA(node's public key))
+	// Note: the attestation that must be sent is (attestation, secret seed)
+	public static String generateAttestationForNode(TrustNode node, Context ctx) {
 		try {
-			if (node.getAttest() == null) {
-				Log.i("CryptoMain 183", "attest was null for " + node.getUuid());
-				return null;
-			}
-			return node.getAttest();
+			MessageDigest digest = MessageDigest.getInstance("SHA");
+			digest.update(node.getPubkey().getBytes());
+			String toSign = Base64.encodeToString(digest.digest(), Base64.DEFAULT);
+			return generateSignature(ctx, toSign).replace("\n", "\\n");
 		}
 		catch (Exception e) {
-			Log.e("CryptoMain 196", "generateAttestation error", e);
+			Log.e("CryptoMain 179", "generate attestation failed for " + node.getUuid(), e);
 			return null;
 		}
 	}
 	
-	public static boolean decryptAttestation(TrustNode node, String claim) {
+	// Generates my secret seed, to give along with my attestation
+	public static String generateSecretSeed(Context ctx) {
 		try {
-			if (node.getAttest() == null) return false;
-			return verifySignature(node.getPubkey(), node.getPubkey(), claim);
+			PrivateKey ska = getPrivateKey(ctx);
+			// 64 is the number of bytes required for a key for HMAC-SHA in Java
+			String toReturn = new String(new SecureRandom(ska.getEncoded()).generateSeed(64));
+			toReturn = toReturn.replace("\n", "\\n");
+			return toReturn;
 		}
 		catch (Exception e) {
-			Log.e("CryptoMain 202", "decryption failed", e);
-			return false;
+			Log.e("CryptoMain 190", "error in generating secret seed", e);
+			return null;
 		}
 	}
+	
+	// This is the attesastation to be sent
+	public static String generateFullAttestForNode(TrustNode node, Context ctx) {
+		return generateAttestationForNode(node, ctx) + "\n" + generateSecretSeed(ctx);
+	}
+	
+	// generate a tab for node
+	public static String generateTab(Context ctx, TrustNode node, String reqId) {
+		try {
+			String fullAttest = node.getAttest();
+			if (fullAttest == null || fullAttest.split("\n").length < 2) {
+				return null;
+			}
+			String seed = fullAttest.split("\n")[1].replace("\\n", "\n");
+			if (seed == null) return null;
+			Key key = new SecretKeySpec(Base64.decode(seed.getBytes(), Base64.DEFAULT), "HmacSHA1");
+			Mac mac = Mac.getInstance("HmacSHA1");
+			mac.init(key);
+			String toMac = "tab" + reqId;
+			mac.update(toMac.getBytes());
+			return Base64.encodeToString(mac.doFinal(), Base64.DEFAULT);
+		}
+		catch (Exception e) {
+			Log.e("CryptoMain 220", "failed to generate tab for " + node.getUuid(), e);
+			return null;
+		}
+	}
+	
+	// generate the encrypted attestation for node
+	// There's probably something incorrect going on here with the crypto stuff
+	// Specifically: what's the difference between initializing a SecretKeySpec 
+	// and using a SecretKeyFactory?
+	public static String generateCiphertext(Context ctx, TrustNode node, String reqId) {
+		try {
+			String fullAttest = node.getAttest();
+			if (fullAttest == null || fullAttest.split("\n").length < 2) {
+				return null;
+			}
+			String sigma = fullAttest.split("\n")[0].replace("\\n", "\n");
+			String seed = fullAttest.split("\n")[1].replace("\\n", "\n"); 
+			if (sigma == null || seed == null) return null;
+			Key key = new SecretKeySpec(Base64.decode(seed.getBytes(), Base64.DEFAULT), "HmacSHA1");
+			Mac mac = Mac.getInstance("HmacSHA1");
+			mac.init(key);
+			String toMac = "key" + reqId;
+			mac.update(toMac.getBytes());
+			byte[] toBeKey = mac.doFinal();
+			key = new SecretKeySpec(toBeKey, "AES");
+			Cipher c = Cipher.getInstance("AES/CBC/PKCS5Padding");
+			c.init(Cipher.ENCRYPT_MODE, key);
+			return Base64.encodeToString(c.doFinal(Base64.decode(sigma.getBytes(), Base64.DEFAULT)), Base64.DEFAULT);
+		}
+		catch (Exception e) {
+			Log.e("CryptoMain 234", "failed to generate ciphertext for " + node.getAttest(), e);
+			return null;
+		}
+	}
+	
+	public static TabbedAttestation generateTabbedAttestation(Context ctx, TrustNode node, String reqId, boolean forCheck) {
+		String c = "";
+		if (!forCheck) c = generateCiphertext(ctx, node, reqId);
+		String t = generateTab(ctx, node, reqId);
+		if (c != null && t != null) return new TabbedAttestation(c, t, reqId);
+		return null;
+	}
+	
+	// base64 encoding of decrypted attestation
+	public static String decryptedAttestation(Context ctx, TabbedAttestation tabbedAttestation) {
+		return null;
+	}
+	
 }

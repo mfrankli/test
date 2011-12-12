@@ -8,7 +8,7 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
 import android.util.Log;
-import android.widget.Toast;
+//import android.widget.Toast;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.IntentFilter;
@@ -98,7 +98,7 @@ public class BluetoothChat2 extends Service {
             		if (sender == null) { // sender is not trusted
             			Log.i("BluetoothChat2 99", "sender is null: " + macAddr);
             			if (contents.toLowerCase().contains("attestation from")) {
-            				sender = beu.readAttestation(macAddr, contents);
+            				//sender = beu.readAttestation(macAddr, contents);
             				if (sender == null) {
             					Log.i("BluetoothChat2 103", "I don't trust you: " + macAddr);
             					bcs.write("I don't trust you!", macAddr);
@@ -248,7 +248,8 @@ public class BluetoothChat2 extends Service {
 	
 	private boolean sendAttestation(String macAddr) {
 		String attestation;
-		attestation = beu.getAttestation(macAddr);
+		//attestation = beu.getAttestation(macAddr);
+		attestation = null;
 		if (attestation == null) return false;
 		Log.i("BluetoothChat2 220", attestation);
 		bcs.write(attestation, macAddr);
@@ -270,9 +271,9 @@ public class BluetoothChat2 extends Service {
 		if (flag == BluetoothChatService2.CONNECTED_SUCCESS) event = "Connected to ";
 		if (flag == BluetoothChatService2.CONNECT_ERROR) event = "Failed to connect to ";
 		if (flag == BluetoothChatService2.CONNECTED_ERROR) event = "Lost connection with ";
-		Context ctx = getApplicationContext();
-		Toast toast = Toast.makeText(ctx, event + macAddr, Toast.LENGTH_SHORT);
-    	toast.show();
+		//Context ctx = getApplicationContext();
+		//Toast toast = Toast.makeText(ctx, event + macAddr, Toast.LENGTH_SHORT);
+    	//toast.show();
     	Log.i("BluetoothChat2 273", event + macAddr);
 	}
 }

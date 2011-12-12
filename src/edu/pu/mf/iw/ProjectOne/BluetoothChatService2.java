@@ -122,37 +122,32 @@ public class BluetoothChatService2 {
 		String macAddr = read.split("\n", 2)[0];
 		buf = read.split("\n", 2)[1].getBytes();
 		uuidToMac.put(macAddr, connectedToMacAddr.get(threadString));
-		if (length == 1024){
+		byte[] trimmedBuf = new byte[length];
+		for (int i = 0; i < length; i++) {
+			trimmedBuf[i] = buf[i];
+		}
+		if (length > 0){
 			Log.i("BluetoothChatService2 123", "buffering read from " + macAddr);
 			// buffer the read
 			LinkedList<byte []> list = uuidToBufferedRead.get(macAddr);
 			if (list != null) {
-				list.add(buf);
+				list.add(trimmedBuf);
 			}
 			else {
 				list = new LinkedList<byte []>();
-				list.add(buf);
+				list.add(trimmedBuf);
 			}
 			uuidToBufferedRead.put(macAddr, list);
 			return;
 		}
 		else {
 			LinkedList<byte []> chunks = uuidToBufferedRead.get(macAddr);
-			byte[] toReturn = new byte[length];
-			for (int i = 0; i < length; i++) {
-				if (i < toReturn.length && i < buf.length) {
-					toReturn[i] = buf[i];
-				}
-			}
-			if (chunks == null) {
-				buf = toReturn;
-			}
-			else {
+			if (chunks != null) {
 				String accum = "";
 				for (byte[] current : chunks) {
 					accum += new String(current);
 				}
-				accum += toReturn;
+				accum += new String(trimmedBuf);
 				buf = accum.getBytes();
 			}
 		}
