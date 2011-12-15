@@ -127,7 +127,7 @@ public class BluetoothChat2 extends Service {
             				}
             				else {
             					Log.i("BluetoothChat2 107", "I trust you! " + macAddr);
-            					sender.commitTrustNode(); // redundant
+            					sender.commitTrustNode();
             					if (LOG) myLog.addEntry(sender);
             					bcs.write("attestation acknowledged", macAddr);
             				}
@@ -284,7 +284,8 @@ public class BluetoothChat2 extends Service {
 	private void sendTabbedAttestations(String reqId, String macAddr) {
 		String[] tabbedAttestations = beu.getTabbedAttestations(reqId);
 		String uuid = CryptoMain.getUuid(this);
-		String metadata = reqId + ":::::" + uuid;
+		String pubkey = CryptoMain.getPublicKeyString(this);
+		String metadata = reqId + ":::::" + uuid + ":::::" + pubkey;
 		if (tabbedAttestations != null && tabbedAttestations.length > 0) {
 			tabbedAttestations[0] = metadata + "/////" + tabbedAttestations[0];
 		}
@@ -310,10 +311,19 @@ public class BluetoothChat2 extends Service {
 			tabbedAttestationArray[0] = parts[1];
 			String metadata = parts[0];
 			parts = metadata.split(":::::");
-			if (parts != null && parts.length == 2) {
+			if (parts != null && parts.length == 3) {
 				String claim = parts[1];
 				String reqId = parts[0];
-				return beu.checkTabbedAttestations(tabbedAttestationArray, reqId, claim);
+				TrustNode shared = beu.checkTabbedAttestations(tabbedAttestationArray, reqId, claim);
+				if (shared != null) {
+					TrustNode newNode = new TrustNode(claim.trim(), false, db);
+					newNode.setPubkey(parts[2]);
+					newNode.setDistance(shared.getDistance() + 1);
+					return newNode;
+				}
+				else {
+					return null;
+				}
 			}
 			else {
 				Log.i("BluetoothChat2 311", "something wrong with metadata: " + metadata);
