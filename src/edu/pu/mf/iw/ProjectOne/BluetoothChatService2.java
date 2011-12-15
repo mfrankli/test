@@ -44,6 +44,7 @@ public class BluetoothChatService2 {
 	private TreeMap<String, Integer> nameToIntId = new TreeMap<String, Integer>();
 	private TreeMap<String, String> uuidToMac = new TreeMap<String, String>();
 	private TreeMap<String, LinkedList<byte []>> uuidToBufferedRead = new TreeMap<String, LinkedList<byte []>>();
+	private TreeMap<String, String> threadStringToUuid = new TreeMap<String, String>();
 	
 	// timeoutLength is in seconds (not millis). This is a bit of a weird way
 	// around the fact that I'm calling it from a class that can't call
@@ -95,7 +96,7 @@ public class BluetoothChatService2 {
 	// if there was some error (e.g. device is not connected yet).
 	public synchronized boolean write(String toWrite, String macAddr) {
 		if (uuidToMac.containsKey(macAddr)) macAddr = uuidToMac.get(macAddr);
-		toWrite = CryptoMain.getUuid(ctx) + "\n" + toWrite;
+		toWrite = ":::" + CryptoMain.getUuid(ctx).trim() + ":::\n" + toWrite;
 		if (toWrite.length() == 1024) {
 			toWrite += "\n\r\n\rpadding";
 		}
@@ -119,14 +120,25 @@ public class BluetoothChatService2 {
 	// with the key "MAC_ADDR"
 	private synchronized void sendRead(String threadString, int length, byte[] buf) {
 		String read = new String(buf);
-		String macAddr = read.split("\n", 2)[0];
-		buf = read.split("\n", 2)[1].getBytes();
-		uuidToMac.put(macAddr, connectedToMacAddr.get(threadString));
-		byte[] trimmedBuf = new byte[length];
-		for (int i = 0; i < length; i++) {
+		String[] temp = read.split("\n", 2);
+		String macAddr = "";
+		int actualLength = length;
+		// this is a horrible hack, composed at 2:50 AM
+		if (temp != null && temp.length == 2 && temp[0].contains(":::")) {
+			macAddr = temp[0].replace(":::", "");
+			buf = read.split("\n", 2)[1].getBytes();
+			uuidToMac.put(macAddr, connectedToMacAddr.get(threadString));
+			threadStringToUuid.put(threadString, macAddr);
+			actualLength = length - temp[0].length() + 1;
+		}
+		else {
+			macAddr = threadStringToUuid.get(threadString);
+		}
+		byte[] trimmedBuf = new byte[actualLength];
+		for (int i = 0; i < actualLength && i < buf.length; i++) {
 			trimmedBuf[i] = buf[i];
 		}
-		if (length > 0){
+		if (length == 1024){
 			Log.i("BluetoothChatService2 123", "buffering read from " + macAddr);
 			// buffer the read
 			LinkedList<byte []> list = uuidToBufferedRead.get(macAddr);

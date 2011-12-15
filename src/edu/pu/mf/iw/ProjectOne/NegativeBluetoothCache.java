@@ -77,7 +77,8 @@ public class NegativeBluetoothCache {
 	}
 	
 	public synchronized boolean isBlacklisted(String macAddr) {
-		if (!db.isOpen()) db.open();
+		return false;
+		/*if (!db.isOpen()) db.open();
 		if (macAddr == null) return false;
 		NBCNode node = new NBCNode(macAddr);
 		//Log.i("NegativeBluetoothCache 82", node.toString());
@@ -92,6 +93,6 @@ public class NegativeBluetoothCache {
 			node.numFailsSince = 0;
 			node.commit();
 			return false;
-		}
+		}*/
 	}
 }

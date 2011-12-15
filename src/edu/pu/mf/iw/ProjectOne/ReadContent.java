@@ -96,27 +96,30 @@ public class ReadContent extends Activity {
 		String key = parts[0];
 		String id = parts[1].trim();
 		TrustNode newNode = new TrustNode(id, false, db);
-		newNode.setPubkey(key.trim());
+		newNode.setPubkey(key);
 		newNode.setDistance(0);
 		newNode.setSource(id);
+		newNode.setName(name);
 		newNode.commitTrustNode();
+		newNode.broadcastNode(this);
 		if (LOG) myLog.addEntry(newNode);
 	}
 	
 	public void handleAttestation(String contents) {
 		String[] parts = contents.split("\n\r\n\r");
-		if (parts == null || parts.length == 0) {
+		if (parts == null || parts.length != 3) {
 			Log.i("ReadContent 109", "parts was null or 0 length");
 			return;
 		}
-		String pubKey = parts[0];
-		pubKey = pubKey.trim();
+		String uuid = parts[0].trim();
 		String attest = parts[1];
-		attest = attest.trim();
-		TrustNode sender = new TrustNode(pubKey, true, db);
+		String seed = parts[2];
+		TrustNode sender = new TrustNode(uuid, false, db);
 		if (sender != null && sender.getDistance() != Integer.MAX_VALUE) {
 			Log.i("ReadContent 118", "sender was valid");
-			sender.setAttest(attest);
+			Log.i("ReadContent 122", "attest: " + attest);
+			Log.i("ReadContent 123", "seed: " + seed);
+			sender.setAttest(attest + "\n\r\n\r" + seed);
 			Log.i("ReadContent 120", new String(sender.getAttest().getBytes()));
 			sender.commitTrustNode();
 			if (LOG) myLog.addEntry(sender);

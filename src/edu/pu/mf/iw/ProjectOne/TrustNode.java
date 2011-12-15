@@ -4,6 +4,9 @@ import android.database.Cursor;
 import android.util.Log;
 import java.util.ArrayList;
 
+import android.content.Context;
+import android.content.Intent;
+
 public class TrustNode implements Comparable<TrustNode> {
 	
 	private TrustDbAdapter db;
@@ -124,35 +127,54 @@ public class TrustNode implements Comparable<TrustNode> {
 	public boolean commitTrustNode() {
 		boolean toReturn = false;
 		if (pubKey != null && uuid != null) {
-			if (!db.updateTrustEntry(pubKey, distance, uuid, name, source, attest))
+			Cursor c = db.selectEntryByUuid(uuid);
+			if (c.getCount() > 0) 
+				toReturn = db.updateTrustEntry(pubKey, distance, uuid, name, source, attest);
+			else
 				toReturn = (db.createTrustEntry(pubKey, distance, uuid, name, source, attest) != -1);
-			else toReturn = true;
 		}
 		return toReturn;
 	}
 	
-	public static TrustNode[] getAllTrustNodes(TrustDbAdapter db) {
+	public void broadcastNode(Context ctx) {
+		Intent toBroadcast = new Intent("edu.pu.mf.iw.ProjectOne.ACTION_NODE_COMMIT");
+		toBroadcast.putExtra("publickey", pubKey);
+		toBroadcast.putExtra("uuid", uuid);
+		toBroadcast.putExtra("distance", distance);
+		toBroadcast.putExtra("name", name);
+		ctx.sendBroadcast(toBroadcast);
+	}
+	
+	public static TrustNode[] getAllTrustNodes(TrustDbAdapter db, Context ctx) {
 		Cursor c = db.selectAllEntries();
 		ArrayList<TrustNode> toReturnList = new ArrayList<TrustNode>();
 		if (c == null) return null;
 		for (int i = 0; i < c.getCount(); i++) {
-			c.move(i);
+			c.moveToPosition(i);
 			int uuidIndex = c.getColumnIndex(TrustDbAdapter.KEY_UUID);
 			int distIndex = c.getColumnIndex(TrustDbAdapter.KEY_DIST);
 			int pubKeyIndex = c.getColumnIndex(TrustDbAdapter.KEY_PUBKEY);
 			int sourceIndex = c.getColumnIndex(TrustDbAdapter.KEY_SOURCE);
 			int attestIndex = c.getColumnIndex(TrustDbAdapter.KEY_ATTEST);
+			int nameIndex = c.getColumnIndex(TrustDbAdapter.KEY_NAME);
 			if (uuidIndex != -1 && pubKeyIndex != -1 && distIndex != -1) {
 				TrustNode newNode = new TrustNode(db);
 				newNode.setUuid(c.getString(uuidIndex));
 				newNode.setPubkey(c.getString(pubKeyIndex));
-				if (attestIndex != -1) newNode.setAttest(c.getString(attestIndex));
+				if (attestIndex != -1) {
+					Log.i("TrustNode 164", "" + c.getString(attestIndex));
+					newNode.setAttest(c.getString(attestIndex));
+				}
+				else Log.i("TrustNode 167", "attestIndex was -1");
 				if (sourceIndex != -1) newNode.setSource(c.getString(sourceIndex));
 				if (distIndex != -1) newNode.setDistance(c.getInt(distIndex));
+				if (nameIndex != -1) newNode.setName(c.getString(nameIndex));
 				toReturnList.add(newNode);
 			}
 		}
-		return (TrustNode []) toReturnList.toArray();
+		TrustNode[] toReturn = new TrustNode[toReturnList.size()];
+		toReturn = toReturnList.toArray(toReturn);
+		return toReturn;
 	}
 	
 	public int compareTo(TrustNode that) {

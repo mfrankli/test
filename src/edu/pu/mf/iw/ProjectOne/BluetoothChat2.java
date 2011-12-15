@@ -64,7 +64,10 @@ public class BluetoothChat2 extends Service {
 			String action = intent.getAction();
 			if (BluetoothDevice.ACTION_FOUND.equals(action)) {
 				BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
-				if (!nbc.isBlacklisted(device.getAddress())) { // check the negative cache
+				if (!nbc.isBlacklisted(device.getAddress())) {
+					if (device.getName() != null && device.getName().startsWith("PC")) {
+						return;
+					}
 					discoveredDevices.addLast(device);
 					if (device.getName() != null) Log.i("BluetoothChat2 69", device.getName());
 					else Log.i("BluetoothChat2 70", device.getAddress());
@@ -98,24 +101,46 @@ public class BluetoothChat2 extends Service {
             		if (sender == null) { // sender is not trusted
             			Log.i("BluetoothChat2 99", "sender is null: " + macAddr);
             			if (contents.toLowerCase().contains("attestation from")) {
-            				//sender = beu.readAttestation(macAddr, contents);
+            				String[] parts = contents.split("\n\r\n\r");
+            				if (parts != null && parts.length != 3) {
+            					// parts[1] is the uuid, parts[2] is the signed content
+            					sender = readAttestation(parts[1], parts[2]);
+            				}
             				if (sender == null) {
             					Log.i("BluetoothChat2 103", "I don't trust you: " + macAddr);
-            					bcs.write("I don't trust you!", macAddr);
+            					String toWrite = "I don't trust you!\n" + beu.getReqId(macAddr) + "\n";
+            					bcs.write(toWrite, macAddr);
             				}
             				else {
             					Log.i("BluetoothChat2 107", "I trust you! " + macAddr);
-            					sender.commitTrustNode();
+            					sender.commitTrustNode(); // redundant
             					if (LOG) myLog.addEntry(sender);
-            					bcs.write("Attestation acknowledged", macAddr);
+            					bcs.write("attestation acknowledged", macAddr);
+            				}
+            			}
+            			else if (contents.toLowerCase().contains("tabbed attestations")) {
+            				sender = readTabbedAttestations(contents.split("\n", 2)[1]);
+            				if (sender == null) {
+            					Log.i("BluetoothChat2 103", "I don't trust you: " + macAddr);
+            					String toWrite = "I don't trust you!\n" + beu.getReqId(macAddr) + "\n";
+            					bcs.write(toWrite, macAddr);
+            				}
+            				else {
+            					Log.i("BluetoothChat2 107", "I trust you! " + macAddr);
+            					sender.commitTrustNode(); // redundant
+            					if (LOG) myLog.addEntry(sender);
+            					bcs.write("attestation acknowledged", macAddr);
             				}
             			}
             			else if (contents.startsWith("I don't trust you!")) {
-            				sendAttestation(macAddr);
-            				bcs.write("I don't trust you!", macAddr);
+            				String reqId = contents.split("\n")[1];
+            				Log.i("BluetoothChat2 120", reqId);
+            				sendTabbedAttestations(reqId, macAddr);
+            				String toWrite = "I don't trust you!\n" + beu.getReqId(macAddr) + "\n";
+            				bcs.write(toWrite, macAddr);
             			}
             			else {
-            				bcs.write("I don't trust you!", macAddr);
+            				bcs.write("I don't trust you!\n" + beu.getReqId(macAddr) + "\n", macAddr);
             			}
             		}
             		else { // sender is trusted
@@ -124,9 +149,10 @@ public class BluetoothChat2 extends Service {
             				bcs.write("Attestation acknowledged", macAddr);
             			}
             			else if (contents.toLowerCase().contains("i don't trust you!")) {
-            				sendAttestation(macAddr);
+            				sendTabbedAttestations(contents.split("\n")[1], macAddr);
             			}
             			else if (contents.toLowerCase().contains("attestation acknowledged")) {
+            				// todo: verify sender
             				sendMessages(macAddr);
             			}
             			else {
@@ -248,12 +274,66 @@ public class BluetoothChat2 extends Service {
 	
 	private boolean sendAttestation(String macAddr) {
 		String attestation;
-		//attestation = beu.getAttestation(macAddr);
-		attestation = null;
+		attestation = beu.getMyAttestation(macAddr);
 		if (attestation == null) return false;
 		Log.i("BluetoothChat2 220", attestation);
 		bcs.write(attestation, macAddr);
 		return true;
+	}
+	
+	private void sendTabbedAttestations(String reqId, String macAddr) {
+		String[] tabbedAttestations = beu.getTabbedAttestations(reqId);
+		String uuid = CryptoMain.getUuid(this);
+		String metadata = reqId + ":::::" + uuid;
+		if (tabbedAttestations != null && tabbedAttestations.length > 0) {
+			tabbedAttestations[0] = metadata + "/////" + tabbedAttestations[0];
+		}
+		String toWrite = "tabbed attestations from " + uuid + "\n\r\n\r";
+		for (int i = 0; i < tabbedAttestations.length; i++) {
+			toWrite += tabbedAttestations[i] + "\n\r\n\r";
+		}
+		bcs.write(toWrite, macAddr);
+	}
+	
+	private TrustNode readTabbedAttestations(String tabbedAttestations) {
+		tabbedAttestations = tabbedAttestations.trim();
+		Log.i("BluetoothChat2 297", tabbedAttestations);
+		String[] tabbedAttestationArray = tabbedAttestations.split("\n\r\n\r");
+		if (tabbedAttestationArray != null && tabbedAttestationArray.length > 0) {
+			String[] parts = tabbedAttestationArray[0].split("/////", 2);
+			Log.i("BluetoothChat2 301", tabbedAttestationArray[0] + "\ncontains sequence: " + tabbedAttestationArray[0].contains("/////"));
+			Log.i("BluetoothChat2 302", parts[0] + "\n" + parts[1]);
+			if (parts == null || parts.length < 2) {
+				Log.i("BluetoothChat2 303", "parts is null or too short: " + parts);
+				return null;
+			}
+			tabbedAttestationArray[0] = parts[1];
+			String metadata = parts[0];
+			parts = metadata.split(":::::");
+			if (parts != null && parts.length == 2) {
+				String claim = parts[1];
+				String reqId = parts[0];
+				return beu.checkTabbedAttestations(tabbedAttestationArray, reqId, claim);
+			}
+			else {
+				Log.i("BluetoothChat2 311", "something wrong with metadata: " + metadata);
+				return null;
+			}
+		}
+		else {
+			return null;
+		}
+		
+	}
+	
+	// give this function a uuid, and the string that is claimed to be a signature on the uuid
+	private TrustNode readAttestation(String uuid, String attestation) {
+		TrustNode node = new TrustNode(uuid, false, db);
+		if (node == null || node.getDistance() == Integer.MAX_VALUE) return null;
+		if (CryptoMain.verifySignature(node.getPubkey(), attestation, uuid)) {
+			return node;
+		}
+		return null;
 	}
 	
 	private void ensureDiscoverable() {

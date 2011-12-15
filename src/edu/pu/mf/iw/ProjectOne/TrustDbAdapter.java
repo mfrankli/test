@@ -54,7 +54,8 @@ public class TrustDbAdapter {
 		if (attest != null) updateValues.put(KEY_ATTEST, attest);
 		if (source != null) updateValues.put(KEY_SOURCE, source);
 		pubKey = DatabaseUtils.sqlEscapeString(pubKey);
-		return database.update(DATABASE_TABLE, updateValues, KEY_PUBKEY + "=" + pubKey, null) > 0;
+		uuid = DatabaseUtils.sqlEscapeString(uuid);
+		return database.update(DATABASE_TABLE, updateValues, KEY_PUBKEY + "=" + pubKey + " OR " + KEY_UUID + "=" + uuid, null) > 0;
 	}
 	
 	public boolean isOpen() {
@@ -108,6 +109,7 @@ public class TrustDbAdapter {
 		values.put(KEY_DIST, distance);
 		values.put(KEY_UUID, uuid);
 		values.put(KEY_NAME, name);
+		values.put(KEY_ATTEST, attest);
 		return values;
 	}
 	

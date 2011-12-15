@@ -54,5 +54,17 @@
     android:layout_width="wrap_content"
     android:text="Try Bluetooth"
     android:onClick="tryBluetoothTransfer" />
+<Button
+    android:id="@+id/main_sendkeys"
+    android:layout_height="wrap_content"
+    android:layout_width="wrap_content"
+    android:text="Broadcast Keys"
+    android:onClick="broadcastKeys" />
+<Button
+    android:id="@+id/main_sendkeys"
+    android:layout_height="wrap_content"
+    android:layout_width="wrap_content"
+    android:text="Test Tabbed Attestation"
+    android:onClick="testTabbedAttestation" />
 </LinearLayout>
 </ScrollView>
