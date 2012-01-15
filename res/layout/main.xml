@@ -13,7 +13,7 @@
    android:id="@+id/text_id"
    android:layout_width="fill_parent"
    android:layout_height="wrap_content"
-   android:text="Hello World, ProjectOneActivity!" />
+   android:text="Welcome to TrustNet" />
 <Button
    android:layout_height="wrap_content"
    android:layout_width="wrap_content"
@@ -66,5 +66,11 @@
     android:layout_width="wrap_content"
     android:text="Test Tabbed Attestation"
     android:onClick="testTabbedAttestation" />
+<Button
+    android:id="@+id/main_btsingle"
+    android:layout_height="wrap_content"
+    android:layout_width="wrap_content"
+    android:text="Share With One Friend"
+    android:onClick="connectToSingle" />
 </LinearLayout>
 </ScrollView>

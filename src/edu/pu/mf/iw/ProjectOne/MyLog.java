@@ -19,6 +19,7 @@ public class MyLog {
 			this.interval = interval;
 		}
 		
+		@Override
 		public void run() {
 			while (toRun) {
 				try {

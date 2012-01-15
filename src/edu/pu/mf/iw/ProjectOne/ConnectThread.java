@@ -31,7 +31,8 @@ public class ConnectThread extends Thread {
         if (mmSocket != null) success = true;
     }
 
-    public void run() {
+    @Override
+	public void run() {
         Log.i("connect thread 33", "BEGIN mConnectThread");
         //setName("ConnectThread" + service.getId(this.toString()));
 

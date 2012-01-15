@@ -1,5 +1,7 @@
 package edu.pu.mf.iw.ProjectOne;
 
+import java.util.TreeMap;
+
 import android.app.Activity;
 import android.util.Log;
 import android.os.Bundle;
@@ -12,6 +14,7 @@ public class ProjectOneActivity extends Activity
 {
 	
 	private final int UUID_LENGTH = 64;
+	TreeMap<String, TrustNode> listNameToNode;
   
   /** Called when the activity is first created. */
   @Override
@@ -31,7 +34,8 @@ public class ProjectOneActivity extends Activity
     }
   }
   
-  public void onDestroy() {
+  @Override
+public void onDestroy() {
 	  super.onDestroy();
 	  //closeClient(null);
 	  //closeServer(null);
@@ -47,16 +51,16 @@ public class ProjectOneActivity extends Activity
       tv.setText(e.getMessage());
     }
     TrustDbAdapter db = new TrustDbAdapter(this);
-	  db.open();
+    db.open();
     TrustNode myself = new TrustNode(CryptoMain.getPublicKeyString(this), true, db);
-	  if (myself.getDistance() == Integer.MAX_VALUE) {
-		  myself.setUuid(CryptoMain.getUuid(this));
-		  myself.setAttest(CryptoMain.generateFullAttestForNode(myself, this));
-		  myself.setDistance(0);
-		  myself.setSource(myself.getUuid());
-		  myself.setName("me");
-		  myself.commitTrustNode();
-	  }
+    if (myself.getDistance() == Integer.MAX_VALUE) {
+    	myself.setUuid(CryptoMain.getUuid(this));
+		myself.setAttest(CryptoMain.generateFullAttestForNode(myself, this));
+		myself.setDistance(0);
+		myself.setSource(myself.getUuid());
+		myself.setName("me");
+		myself.commitTrustNode();
+	}
   }
   
   public void resetDb(View view) {
@@ -89,6 +93,45 @@ public class ProjectOneActivity extends Activity
   
   public void launchBluetooth(View view) {
 	  Intent myIntent = new Intent(ProjectOneActivity.this, BluetoothChat2.class);
+	  startService(myIntent);
+  }
+  
+  public void connectToSingle(View view) {
+	  TreeMap<String, Integer> nameToCount = new TreeMap<String, Integer>();
+	  listNameToNode = new TreeMap<String, TrustNode>();
+	  TrustNode[] allNodes = TrustNode.getAllTrustNodes(new TrustDbAdapter(this).open(), this);
+	  String[] names = new String[allNodes.length];
+	  for (int i = 0; i < allNodes.length; i++) {
+		  String name = "";
+		  if (allNodes[i].getName() != null) name = allNodes[i].getName();
+		  else name = allNodes[i].getUuid();
+		  if (listNameToNode.containsKey(name)) {
+			  if (nameToCount.containsKey(name)) {
+				  int num = nameToCount.get(name) + 1;
+				  nameToCount.put(name, num);
+				  name = name + "(" + num + ")";
+			  }
+			  else {
+				  int num = 0;
+				  nameToCount.put(name, num);
+				  name = name + "(" + num + ")";
+			  }
+			  listNameToNode.put(name, allNodes[i]);
+		  }
+		  else {
+			  listNameToNode.put(name, allNodes[i]);
+		  }
+		  names[i] = name;
+	  }
+	  Intent myIntent = new Intent(ProjectOneActivity.this, DoEncryption.class);
+	  myIntent.putExtra("NAMES", names);
+	  startActivityForResult(myIntent, 0);
+  }
+  
+  public void finishSingleConnect(TrustNode node) {
+	  Intent myIntent = new Intent(ProjectOneActivity.this, BluetoothChat2.class);
+	  myIntent.putExtra(BluetoothChat2.KEY_EXTRA, node.getMacAddr());
+	  Log.i("ProjectOneActivity 134", "Put key extra: " + node.getMacAddr());
 	  startService(myIntent);
   }
   
@@ -141,4 +184,14 @@ public class ProjectOneActivity extends Activity
 	  TrustNode node2 = beu.checkTabbedAttestations(tabbedAttestations, "0", CryptoMain.getUuid(this));
 	  if (node2 != null) Log.i("ProjectOneActivity 138", "node2: " + node2.getUuid());
   }
+  
+  @Override
+public void onActivityResult(int requestCode, int resultCode, Intent intent) {
+		if (requestCode == 0) {
+			if (resultCode == RESULT_OK) {
+				TrustNode node = listNameToNode.get(intent.getStringExtra("NAME"));
+				finishSingleConnect(node);
+			}
+		}
+	}
 }

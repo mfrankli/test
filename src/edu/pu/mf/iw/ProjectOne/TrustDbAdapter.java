@@ -14,6 +14,7 @@ public class TrustDbAdapter {
 	public static final String KEY_NAME = "readable_id";
 	public static final String KEY_SOURCE = "source";
 	public static final String KEY_ATTEST = "attestation";
+	public static final String KEY_MAC = "macaddr";
 	private static final String DATABASE_TABLE = "trust";
 	public static final int TO_HEX = 0;
 	public static final int FROM_HEX = 1;
@@ -41,18 +42,19 @@ public class TrustDbAdapter {
 		helper.onUpgrade(database, 0, 0);
 	}
 	
-	public long createTrustEntry(String pubKey, int distance, String uuid, String name, String source, String attest) {
-		ContentValues initialValues = createContentValues(pubKey, distance, uuid, name, source, attest);
+	public long createTrustEntry(String pubKey, int distance, String uuid, String name, String source, String attest, String macAddr) {
+		ContentValues initialValues = createContentValues(pubKey, distance, uuid, name, source, attest, macAddr);
 		return database.insert(DATABASE_TABLE, null, initialValues);
 	}
 	
-	public boolean updateTrustEntry(String pubKey, int distance, String uuid, String name, String source, String attest) {
+	public boolean updateTrustEntry(String pubKey, int distance, String uuid, String name, String source, String attest, String macAddr) {
 		ContentValues updateValues = new ContentValues();
 		if (distance != -1) updateValues.put(KEY_DIST, distance);
 		if (uuid != null) updateValues.put(KEY_UUID, uuid);
 		if (name != null) updateValues.put(KEY_NAME,  name);
 		if (attest != null) updateValues.put(KEY_ATTEST, attest);
 		if (source != null) updateValues.put(KEY_SOURCE, source);
+		if (macAddr != null) updateValues.put(KEY_MAC, macAddr);
 		pubKey = DatabaseUtils.sqlEscapeString(pubKey);
 		uuid = DatabaseUtils.sqlEscapeString(uuid);
 		return database.update(DATABASE_TABLE, updateValues, KEY_PUBKEY + "=" + pubKey + " OR " + KEY_UUID + "=" + uuid, null) > 0;
@@ -103,13 +105,14 @@ public class TrustDbAdapter {
 		return mCursor;
 	}
 	
-	private ContentValues createContentValues(String pubKey, int distance, String uuid, String name, String source, String attest) {
+	private ContentValues createContentValues(String pubKey, int distance, String uuid, String name, String source, String attest, String macAddr) {
 		ContentValues values = new ContentValues();
 		values.put(KEY_PUBKEY, pubKey);
 		values.put(KEY_DIST, distance);
 		values.put(KEY_UUID, uuid);
 		values.put(KEY_NAME, name);
 		values.put(KEY_ATTEST, attest);
+		values.put(KEY_MAC, macAddr);
 		return values;
 	}
 	

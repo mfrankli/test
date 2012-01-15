@@ -36,11 +36,16 @@ public class CryptoMain
 				FileOutputStream fos1 = ctx.openFileOutput(publicfile, 0);
 				FileOutputStream fos2 = ctx.openFileOutput(privatefile, 0);
 				fos1.write(publicString.getBytes());
+				fos1.flush();
+				fos1.close();
 				fos2.write(privateString.getBytes());
+				fos2.flush();
+				fos2.close();
 			}
 			return publicString + "\n" + privateString;
 		}
 		catch (Exception e) {
+			Log.i("CryptoMain 48", "generateKeys failed", e);
 			return e.getMessage();
 		}
 	}
@@ -61,7 +66,9 @@ public class CryptoMain
 		try {
 			PublicKey key = getPublicKey(ctx);
 			byte[] bytes = key.getEncoded();
-			return Base64.encodeToString(bytes, Base64.DEFAULT);
+			String toReturn = Base64.encodeToString(bytes, Base64.DEFAULT);
+			Log.i("CryptoMain 70", new String(toReturn));
+			return toReturn;
 		}
 		catch (Exception e) {
 			StackTraceElement[] ste = e.getStackTrace();

@@ -169,6 +169,7 @@ public class BluetoothExchangeUtils {
         	}
     	}
     	toCommit.commitTrustNode();
+    	toCommit.broadcastNode(ctx);
     	if (LOG) myLog.addEntry(toCommit);
     }
 	

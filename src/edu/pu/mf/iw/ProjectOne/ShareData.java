@@ -20,6 +20,7 @@ public class ShareData extends Activity {
 	
 	private TrustDbAdapter db;
 	
+	@Override
 	public void onCreate(Bundle savedInstanceState) {
 	    super.onCreate(savedInstanceState);
 	    setContentView(R.layout.sharedata);
@@ -78,6 +79,7 @@ public class ShareData extends Activity {
 		}
 	}
 	
+	@Override
 	public void onActivityResult(int requestCode, int resultCode, Intent intent) {
 		if (requestCode == 0) {
 			if (resultCode == RESULT_OK) {

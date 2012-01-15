@@ -10,11 +10,13 @@ import android.content.Intent;
 import java.lang.Exception;
 import android.util.Log;
 import java.util.TreeMap;
+import android.bluetooth.BluetoothAdapter;
 
 public class ShareContent extends Activity {
 
 	private TreeMap<String, TrustNode> listNameToNode = new TreeMap<String, TrustNode>();
 	
+	@Override
 	public void onCreate(Bundle savedInstanceState)
 	  {
 	    super.onCreate(savedInstanceState);
@@ -26,14 +28,21 @@ public class ShareContent extends Activity {
 	    try {
 	    	String to_display = CryptoMain.getPublicKeyString(this);
 	    	to_display += "\n\r\n\r" + CryptoMain.getUuid(this);
+	    	BluetoothAdapter ba = BluetoothAdapter.getDefaultAdapter();
+	    	if (!ba.isEnabled()) {
+	    		Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+				startActivity(enableBtIntent);
+	    	}
+	    	while (!ba.isEnabled());
+	    	to_display += "\n\r\n\r" + ba.getAddress();
 	    	intent.putExtra("ENCODE_DATA", to_display);
 	    	intent.putExtra("ENCODE_TYPE", "TEXT_TYPE");
 	    	TextView tv = (TextView) findViewById(R.id.sharecontent_text);
-	    	tv.setText(String.valueOf(to_display));
+	    	if (tv != null) tv.setText(to_display);
 	    	startActivity(intent);
 	    }
 	    catch (Exception e) {
-	    	Log.i("errortag", e.getMessage());
+	    	Log.e("ShareContent 44", "share pubkey error", e);
 	    }
 	}
 	
@@ -89,6 +98,7 @@ public class ShareContent extends Activity {
 		startActivity(myIntent);
 	}
 	
+	@Override
 	public void onActivityResult(int requestCode, int resultCode, Intent intent) {
 		if (requestCode == 0) {
 			if (resultCode == RESULT_OK) {

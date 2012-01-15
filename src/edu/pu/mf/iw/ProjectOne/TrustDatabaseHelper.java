@@ -7,7 +7,7 @@ import android.content.Context;
 public class TrustDatabaseHelper extends SQLiteOpenHelper {
 
 	private static final String DATABASE_NAME = "trust_data";
-	public static final String DATABASE_CREATE = "create table trust (_id integer primary key autoincrement, pubkey text, distance integer, uuid text, readable_id text, source text, attestation text);";
+	public static final String DATABASE_CREATE = "create table trust (_id integer primary key autoincrement, pubkey text, distance integer, uuid text, readable_id text, source text, attestation text, macaddr text);";
 	
 	public TrustDatabaseHelper(Context context) {
 		super(context, DATABASE_NAME, null, 1);

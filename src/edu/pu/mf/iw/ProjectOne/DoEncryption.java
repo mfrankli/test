@@ -27,7 +27,8 @@ public class DoEncryption extends ListActivity {
 	  lv.setTextFilterEnabled(true);
 
 	  lv.setOnItemClickListener(new OnItemClickListener() {
-	    public void onItemClick(AdapterView<?> parent, View view,
+	    @Override
+		public void onItemClick(AdapterView<?> parent, View view,
 	        int position, long id) {
 	      // When clicked, show a toast with the TextView text
 	      String toReturn = ((TextView) view).getText().toString();

@@ -16,6 +16,7 @@ public class TrustNode implements Comparable<TrustNode> {
 	private String name; // human-readable name
 	private String source; // node who informed us of this node
 	private String attest; // self-signed public key
+	private String macAddr; // the bluetooth mac address, to connect in the future
 	
 	public TrustNode(TrustDbAdapter db) {
 		this.db = db;
@@ -40,6 +41,7 @@ public class TrustNode implements Comparable<TrustNode> {
 			int pubKeyIndex = c.getColumnIndex(TrustDbAdapter.KEY_PUBKEY);
 			int sourceIndex = c.getColumnIndex(TrustDbAdapter.KEY_SOURCE);
 			int attestIndex = c.getColumnIndex(TrustDbAdapter.KEY_ATTEST);
+			int macIndex = c.getColumnIndex(TrustDbAdapter.KEY_MAC);
 			if (isPubKey) {
 				pubKey = key;
 				uuid = c.getString(uuidIndex);
@@ -51,6 +53,7 @@ public class TrustNode implements Comparable<TrustNode> {
 			if (distIndex != -1) distance = c.getInt(distIndex);
 			if (sourceIndex != -1) source = c.getString(sourceIndex);
 			if (attestIndex != -1) attest = c.getString(attestIndex);
+			if (macIndex != -1) macAddr = c.getString(macIndex);
 		}
 		else {
 			if (isPubKey) {
@@ -124,14 +127,22 @@ public class TrustNode implements Comparable<TrustNode> {
 		this.attest = attest;
 	}
 	
+	public String getMacAddr() {
+		return macAddr;
+	}
+	
+	public void setMacAddr(String macAddr) {
+		this.macAddr = macAddr;
+	}
+	
 	public boolean commitTrustNode() {
 		boolean toReturn = false;
 		if (pubKey != null && uuid != null) {
 			Cursor c = db.selectEntryByUuid(uuid);
 			if (c.getCount() > 0) 
-				toReturn = db.updateTrustEntry(pubKey, distance, uuid, name, source, attest);
+				toReturn = db.updateTrustEntry(pubKey, distance, uuid, name, source, attest, macAddr);
 			else
-				toReturn = (db.createTrustEntry(pubKey, distance, uuid, name, source, attest) != -1);
+				toReturn = (db.createTrustEntry(pubKey, distance, uuid, name, source, attest, macAddr) != -1);
 		}
 		return toReturn;
 	}
@@ -157,6 +168,7 @@ public class TrustNode implements Comparable<TrustNode> {
 			int sourceIndex = c.getColumnIndex(TrustDbAdapter.KEY_SOURCE);
 			int attestIndex = c.getColumnIndex(TrustDbAdapter.KEY_ATTEST);
 			int nameIndex = c.getColumnIndex(TrustDbAdapter.KEY_NAME);
+			int macIndex = c.getColumnIndex(TrustDbAdapter.KEY_MAC);
 			if (uuidIndex != -1 && pubKeyIndex != -1 && distIndex != -1) {
 				TrustNode newNode = new TrustNode(db);
 				newNode.setUuid(c.getString(uuidIndex));
@@ -169,6 +181,7 @@ public class TrustNode implements Comparable<TrustNode> {
 				if (sourceIndex != -1) newNode.setSource(c.getString(sourceIndex));
 				if (distIndex != -1) newNode.setDistance(c.getInt(distIndex));
 				if (nameIndex != -1) newNode.setName(c.getString(nameIndex));
+				if (macIndex != -1) newNode.setMacAddr(c.getString(macIndex));
 				toReturnList.add(newNode);
 			}
 		}
@@ -177,6 +190,7 @@ public class TrustNode implements Comparable<TrustNode> {
 		return toReturn;
 	}
 	
+	@Override
 	public int compareTo(TrustNode that) {
 		if (this.distance < that.distance) return -1;
 		if (this.distance == that.distance) return 0;

@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">ProjectOneActivity</string>
+    <string name="app_name">TrustNet</string>
     <string name="generate_keys">Generate Keys</string>
     <string name="display_pubkey">Display Public Key Length</string>
     <string name="display_privkey">Display Private Key Length</string>
     <string name="encrypt">Encrypt text</string>
+    <string name="msg_default_status">Default Status</string>
     
         <!--  BluetoothChat -->
     <string name="send">Send</string>

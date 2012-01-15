@@ -110,7 +110,10 @@ public class BluetoothChatService2 {
 		if (macAddr == null) return false;
 		BCSNode thisNode = macAddrToThreads.get(macAddr);
 		// ensure that this mac address is one to which we have connected
-		if (thisNode == null || thisNode.connected == null) return false;
+		if (thisNode == null || thisNode.connected == null) {
+			Log.i("BluetoothChatService2 114", "returning @114");
+			return false;
+		}
 		thisNode.connected.write(buf2);
 		return true;
 	}
@@ -233,18 +236,23 @@ public class BluetoothChatService2 {
 			return;
 		}
 		BCSNode thisNode = macAddrToThreads.get(device.getAddress());
+		if (thisNode == null) {
+			thisNode = new BCSNode(null, accept, null);
+			macAddrToThreads.put(device.getAddress(), thisNode);
+		}
 		ConnectedThread connected = new ConnectedThread(this, socket);
 		if (nameToConnect.containsKey(threadString)) {
 			// We are the client in this case
-			if (thisNode == null) return;
+			// I'm no longer sure what's going on here
 			accept.interrupt();
 		}
 		else {
 			// We are the server
-			if (thisNode == null) return;
 			ConnectThread connect = thisNode.connect;
-			connect.cancel();
-			nameToConnect.remove(connect.toString());
+			if (connect != null) {
+				connect.cancel();
+				nameToConnect.remove(connect.toString());
+			}
 		}
 		thisNode.connected = connected;
 		connected.start();

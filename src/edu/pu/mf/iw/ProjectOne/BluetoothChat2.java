@@ -16,6 +16,7 @@ import java.util.LinkedList;
 
 public class BluetoothChat2 extends Service {
 	
+	public static final String KEY_EXTRA = "key_extra";
 	
 	// This implements the thread that periodically searches for Bluetooth devices
 	private class DiscoveryThread extends Thread {
@@ -23,17 +24,14 @@ public class BluetoothChat2 extends Service {
 		private long interval; private boolean toRun = true;
 		public DiscoveryThread(BluetoothAdapter ba, long interval) {
 			this.ba = ba; this.interval = interval; }
+		@Override
 		public void run() {
-			if (!ba.isEnabled()) { // make sure Bluetooth is enabled
-				Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-				startActivity(enableBtIntent);
-			}
 			toWake = System.currentTimeMillis() + interval;
 			while (toRun) {
-				ba.cancelDiscovery(); ba.startDiscovery();
 				// this is to make sure that even if it gets interrupted
 				// it will still sleep for at least half the intended time
 				sleepFunction(); toWake += interval;
+				ba.cancelDiscovery(); ba.startDiscovery();
 			}
 		}
 		
@@ -46,7 +44,6 @@ public class BluetoothChat2 extends Service {
 			try { sleep(toWake - System.currentTimeMillis());}
 			catch (InterruptedException e) {
 				if (!toRun) return;
-				if ((toWake - System.currentTimeMillis())*2 < interval) sleepFunction();
 			}
 		}
 		
@@ -64,11 +61,12 @@ public class BluetoothChat2 extends Service {
 			String action = intent.getAction();
 			if (BluetoothDevice.ACTION_FOUND.equals(action)) {
 				BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+				if (device == null) return;
 				if (!nbc.isBlacklisted(device.getAddress())) {
-					if (device.getName() != null && device.getName().startsWith("PC")) {
-						return;
+					if (startOption == SINGLE_CONNECT && device.getAddress().equals(connectAddr)) {
+						discoveredDevices.addLast(device);
 					}
-					discoveredDevices.addLast(device);
+					else discoveredDevices.addLast(device);
 					if (device.getName() != null) Log.i("BluetoothChat2 69", device.getName());
 					else Log.i("BluetoothChat2 70", device.getAddress());
 				}
@@ -181,6 +179,7 @@ public class BluetoothChat2 extends Service {
 	
 	private final int DEFAULT_INTERVAL = 45*60*1000; // 45 minutes
 	private final boolean LOG = false;
+	private final int SINGLE_CONNECT = 0;
 	
 	private TrustDbAdapter db;
 	private BluetoothChatService2 bcs;
@@ -190,6 +189,8 @@ public class BluetoothChat2 extends Service {
 	private NegativeBluetoothCache nbc = null;
 	private NegCacheDbAdapter nbcDb = null;
 	private MyLog myLog;
+	private int startOption;
+	private String connectAddr;
 	
 	private LinkedList<BluetoothDevice> discoveredDevices = new LinkedList<BluetoothDevice>();
 	
@@ -210,11 +211,14 @@ public class BluetoothChat2 extends Service {
 		nbcDb = new NegCacheDbAdapter(this);
 		nbcDb.open();
 		nbc = new NegativeBluetoothCache(nbcDb);
+		startOption = 1;
+		connectAddr = null;
+		bcs = new BluetoothChatService2(mHandler, 60, this);
 	}
 	
 	@Override
 	public int onStartCommand(Intent myIntent, int flags, int startid) {
-		Log.i("BluetoothChat2 166", "in onStartCommand");
+		Log.i("BluetoothChat2 219", "in onStartCommand");
 		if (!db.isOpen()) {
 			db.open();
 		}
@@ -228,11 +232,20 @@ public class BluetoothChat2 extends Service {
         this.registerReceiver(mReceiver, filter);
         filter = new IntentFilter(BluetoothAdapter.ACTION_DISCOVERY_STARTED);
         this.registerReceiver(mReceiver, filter);
-        bcs = new BluetoothChatService2(mHandler, 60, this);
         if (!discoveryThread.isAlive()) discoveryThread.start();
+        if (!ba.isEnabled()) { // make sure Bluetooth is enabled
+			Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+			startActivity(enableBtIntent);
+		}
+        String singleMac = myIntent.getStringExtra(KEY_EXTRA);
+        if (singleMac != null) {
+        	BluetoothDevice device = ba.getRemoteDevice(singleMac);
+        	bcs.connectToDevice(device);
+        }
 		return START_STICKY;
 	}
 	
+	@Override
 	public void onDestroy() {
 		Log.i("BluetoothChat2 155", "in onDestroy");
 		super.onDestroy();

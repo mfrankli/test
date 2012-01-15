@@ -26,6 +26,7 @@ public class ReadContent extends Activity {
 		db.open();
 	}*/
 	
+	@Override
 	public void onCreate(Bundle savedInstanceState)
 	  {
 	    super.onCreate(savedInstanceState);
@@ -56,6 +57,7 @@ public class ReadContent extends Activity {
 		startActivityForResult(intent, 0);
 	}
 	
+	@Override
 	public void onActivityResult(int requestCode, int resultCode, Intent intent) {
 		TextView tv = (TextView) findViewById(R.id.readcontent_displaytext);
 		if (requestCode == 0) {
@@ -92,14 +94,18 @@ public class ReadContent extends Activity {
 	public void handleKey(String contents, String name) {
 		if (contents == null) return;
 		String[] parts = contents.split("\n\r\n\r");
-		if (parts.length != 2) return;
+		if (parts.length < 1) return;
 		String key = parts[0];
-		String id = parts[1].trim();
+		String id = null;
+		if (parts.length >= 2) id = parts[1].trim();
+		String macAddr = null;
+		if (parts.length >= 3) macAddr = parts[2];
 		TrustNode newNode = new TrustNode(id, false, db);
 		newNode.setPubkey(key);
-		newNode.setDistance(0);
+		newNode.setDistance(1);
 		newNode.setSource(id);
 		newNode.setName(name);
+		newNode.setMacAddr(macAddr);
 		newNode.commitTrustNode();
 		newNode.broadcastNode(this);
 		if (LOG) myLog.addEntry(newNode);
@@ -143,6 +149,7 @@ public class ReadContent extends Activity {
 					String signatureString = parts[2];
 					String uuid = parts[3];
 					Cursor c = db.selectEntryByUuid(uuid);
+					c.moveToFirst();
 					String pubKeyString = c.getString(c.getColumnIndex("pubkey"));
 					boolean verify = CryptoMain.verifySignature(pubKeyString, content, signatureString);
 					String name = c.getString(c.getColumnIndex("readable_id"));

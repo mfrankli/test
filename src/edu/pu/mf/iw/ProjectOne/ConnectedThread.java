@@ -33,7 +33,8 @@ public class ConnectedThread extends Thread {
         mmOutStream = tmpOut;
     }
 
-    public void run() {
+    @Override
+	public void run() {
         Log.i("connected thread 36", "BEGIN mConnectedThread");
         byte[] buffer = new byte[1024];
         int bytes;

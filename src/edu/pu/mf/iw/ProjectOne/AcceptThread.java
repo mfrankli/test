@@ -32,7 +32,8 @@ public class AcceptThread extends Thread {
         toRun = true;
     }
 
-    public void run() {
+    @Override
+	public void run() {
         if (D) Log.d("accept thread 32", "BEGIN mAcceptThread" + this);
         setName("AcceptThread" + service.getId(this.toString()));
 
@@ -63,6 +64,7 @@ public class AcceptThread extends Thread {
         try {
         	toRun = false;
             mmServerSocket.close();
+            interrupt();
         } catch (IOException e) {
             Log.e("accept thread 62", "close() of server failed", e);
         }
