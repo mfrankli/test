@@ -186,7 +186,7 @@ public void onDestroy() {
   }
   
   @Override
-public void onActivityResult(int requestCode, int resultCode, Intent intent) {
+  public void onActivityResult(int requestCode, int resultCode, Intent intent) {
 		if (requestCode == 0) {
 			if (resultCode == RESULT_OK) {
 				TrustNode node = listNameToNode.get(intent.getStringExtra("NAME"));

@@ -157,6 +157,8 @@ public class TrustNode implements Comparable<TrustNode> {
 	}
 	
 	public static TrustNode[] getAllTrustNodes(TrustDbAdapter db, Context ctx) {
+		if (db == null) return null;
+		if (!db.isOpen()) db.open();
 		Cursor c = db.selectAllEntries();
 		ArrayList<TrustNode> toReturnList = new ArrayList<TrustNode>();
 		if (c == null) return null;

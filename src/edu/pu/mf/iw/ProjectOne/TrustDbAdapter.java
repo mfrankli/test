@@ -61,6 +61,7 @@ public class TrustDbAdapter {
 	}
 	
 	public boolean isOpen() {
+		if (database == null) return false;
 		return database.isOpen();
 	}
 	
@@ -70,6 +71,9 @@ public class TrustDbAdapter {
 	
 	public Cursor selectAllEntries() {
 		String query = "select * from trust";
+		if (database == null) {
+			database = helper.getWritableDatabase();
+		}
 		Cursor mCursor = database.rawQuery(query, new String[] {});
 		if (mCursor != null) {
 			mCursor.moveToFirst();
