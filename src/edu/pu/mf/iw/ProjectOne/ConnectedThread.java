@@ -43,11 +43,17 @@ public class ConnectedThread extends Thread {
         // Keep listening to the InputStream while connected
         while (toRun) {
             try {
+            	StringBuilder builder = new StringBuilder("");
+            	int numBytes = 0;
                 // Read from the InputStream
-                bytes = mmInStream.read(buffer);
-
+                while((bytes = mmInStream.read(buffer)) == 1024) {
+                	builder.append(new String(buffer));
+                	numBytes += bytes;
+                }
+                numBytes += bytes;
+                builder.append(new String(buffer, 0, bytes));
                 // Send the obtained bytes to the UI Activity
-                service.bytesRead(this.toString(), bytes, buffer);
+                service.bytesRead(this.toString(), numBytes, builder.toString());
             } catch (IOException e) {
                 Log.e("connected thread 50", "disconnected", e);
                 service.connectionLost(this.toString());

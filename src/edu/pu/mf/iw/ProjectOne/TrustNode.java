@@ -35,7 +35,7 @@ public class TrustNode implements Comparable<TrustNode> {
 		if (isPubKey) c = db.selectEntryByKey(key);
 		else c = db.selectEntryByUuid(key);
 		if (c != null && c.getCount() != 0) {
-			Log.i("TrustNode 32", "c.getCount(): " + c.getCount());
+			//Log.i("TrustNode 32", "c.getCount(): " + c.getCount());
 			int uuidIndex = c.getColumnIndex(TrustDbAdapter.KEY_UUID);
 			int distIndex = c.getColumnIndex(TrustDbAdapter.KEY_DIST);
 			int pubKeyIndex = c.getColumnIndex(TrustDbAdapter.KEY_PUBKEY);
@@ -68,6 +68,7 @@ public class TrustNode implements Comparable<TrustNode> {
 			source = null;
 			attest = null;
 		}
+		c.close();
 	}
 	
 	// Verifies that content was sent by this entity
@@ -143,6 +144,7 @@ public class TrustNode implements Comparable<TrustNode> {
 				toReturn = db.updateTrustEntry(pubKey, distance, uuid, name, source, attest, macAddr);
 			else
 				toReturn = (db.createTrustEntry(pubKey, distance, uuid, name, source, attest, macAddr) != -1);
+			c.close();
 		}
 		return toReturn;
 	}
@@ -189,6 +191,7 @@ public class TrustNode implements Comparable<TrustNode> {
 		}
 		TrustNode[] toReturn = new TrustNode[toReturnList.size()];
 		toReturn = toReturnList.toArray(toReturn);
+		c.close();
 		return toReturn;
 	}
 	

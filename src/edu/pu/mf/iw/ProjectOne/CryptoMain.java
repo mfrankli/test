@@ -7,6 +7,7 @@ import android.util.Base64;
 import android.util.Log;
 import java.io.FileOutputStream;
 import java.io.FileInputStream;
+import java.nio.channels.FileChannel;
 import android.content.Context;
 import javax.crypto.Cipher;
 import 	javax.crypto.spec.SecretKeySpec;
@@ -138,9 +139,8 @@ public class CryptoMain
 	
 	private static PublicKey getPublicKey(Context ctx, String filename) throws Exception {
 		FileInputStream fis = ctx.openFileInput(filename);
-		// this is a potential bug - doesn't represent exactly how many bytes there are
-		// on this scale, shouldn't matter
-		byte[] bytes = new byte[fis.available()];
+		FileChannel channel = fis.getChannel();
+		byte[] bytes = new byte[(int) channel.size()];
 		fis.read(bytes);
 		bytes = Base64.decode(bytes, Base64.DEFAULT);
 		KeyFactory factory = KeyFactory.getInstance("RSA");
@@ -155,7 +155,8 @@ public class CryptoMain
 	
 	private static PrivateKey getPrivateKey(Context ctx, String filename) throws Exception {
 		FileInputStream fis = ctx.openFileInput("private.key");
-		byte[] bytes = new byte[fis.available()];
+		FileChannel channel = fis.getChannel();
+		byte[] bytes = new byte[(int) channel.size()];
 		fis.read(bytes);
 		bytes = Base64.decode(bytes,  Base64.DEFAULT);
 		KeyFactory factory = KeyFactory.getInstance("RSA");

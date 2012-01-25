@@ -155,6 +155,7 @@ public class BluetoothChat2 extends Service {
             			}
             			else {
             				beu.handleMessage(contents, sender);
+            				Log.i("BluetoothChat2 158", "message received: " + System.currentTimeMillis());
             			}
             		}
             	case BluetoothChatService2.CONNECT_ERROR:
@@ -168,6 +169,7 @@ public class BluetoothChat2 extends Service {
             	case BluetoothChatService2.CONNECTED_SUCCESS:
             		macAddr = msg.getData().getString(BluetoothChatService2.MAC_ADDR);
             		Log.i("BluetoothChat2 143", "got connected message with " + macAddr);
+            		Log.i("BluetoothChat2 171", "Connected: " + System.currentTimeMillis());
             		sendAttestation(macAddr);
             		notifyUser(msg.what, macAddr);
             }
@@ -239,6 +241,7 @@ public class BluetoothChat2 extends Service {
 		}
         String singleMac = myIntent.getStringExtra(KEY_EXTRA);
         if (singleMac != null) {
+        	Log.i("BluetoothChat2 244", "Start: " + System.currentTimeMillis());
         	BluetoothDevice device = ba.getRemoteDevice(singleMac);
         	bcs.connectToDevice(device);
         }
