@@ -45,6 +45,9 @@ public class BluetoothExchangeUtils {
     					boolean put = false;
     					if (!columns[j].equals(TrustDbAdapter.KEY_DIST) && !columns[j].equals(TrustDbAdapter.KEY_ATTEST)) {
     						String s = c.getString(c.getColumnIndex(columns[j]));
+    						if (columns[j].equals(TrustDbAdapter.KEY_UUID)){
+    							if (s.contains(CryptoMain.getUuid(ctx))) continue;
+    						}
     						if (s != null && s.length() != 0) {
     							Log.i("BluetoothExchangeUtils 53", "s: " + s);
     							toPut += s;
@@ -117,6 +120,7 @@ public class BluetoothExchangeUtils {
     	TrustNode toCommit = null;
     	if (uuidIndex != -1) {
     		uuid = columns[uuidIndex];
+    		if (uuid.contains(CryptoMain.getUuid(ctx))) return;
     		toCommit = new TrustNode(uuid, false, db);
     	}
     	else { // we only accept messages with uuids
@@ -130,6 +134,7 @@ public class BluetoothExchangeUtils {
     	}
     	if (pubIndex != -1) {
     		pubKey = columns[pubIndex];
+    		if (pubKey.equals(CryptoMain.getPublicKeyString(ctx))) return;
     		if (toCommit != null) {
     			toCommit.setPubkey(pubKey);
     		}
@@ -140,7 +145,7 @@ public class BluetoothExchangeUtils {
     	}
     	if (distIndex != -1) {
     		dist = Integer.parseInt(columns[distIndex]) + senderNode.getDistance();
-    		if (toCommit != null) {
+    		if (toCommit != null && dist < toCommit.getDistance()) {
     			toCommit.setDistance(dist);
     		}
     	}
